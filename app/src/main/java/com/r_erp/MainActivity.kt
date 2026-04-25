@@ -10,7 +10,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Description
@@ -42,6 +42,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.r_erp.ui.theme.RerpTheme
+import com.r_erp.ui.screens.ClientsScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -73,7 +74,7 @@ fun MainScreen() {
         NavigationItem("Serviços", Icons.Default.Build),
         NavigationItem("Compras", Icons.Default.LocalMall),
         NavigationItem("Orçamentos", Icons.Default.Description),
-        NavigationItem("Pedidos", Icons.Default.Assignment),
+        NavigationItem("Pedidos", Icons.AutoMirrored.Filled.Assignment),
     )
     var selectedItemIndex by rememberSaveable { mutableIntStateOf(0) }
 
@@ -127,9 +128,18 @@ fun MainScreen() {
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding),
-                contentAlignment = Alignment.Center,
             ) {
-                Text(text = "Tela de ${items[selectedItemIndex].title}")
+                when (items[selectedItemIndex].title) {
+                    "Clientes" -> ClientsScreen()
+                    else -> {
+                        Box(
+                            modifier = Modifier.fillMaxSize(),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(text = "Tela de ${items[selectedItemIndex].title}")
+                        }
+                    }
+                }
             }
         }
     }

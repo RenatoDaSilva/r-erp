@@ -3,15 +3,23 @@ package com.r_erp.api
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.GET
+import retrofit2.http.Query
 
-data class ApiResponse(
-    val message: String,
-    val queryParams: Map<String, String>,
+data class Client(
+    val id: Int,
+    val fullname: String,
+    val phone: String,
+    val email: String? = null,
+    val address: String? = null,
+    val city: String? = null,
+    val state: String? = null,
+    val cpf: String? = null,
+    val date: String? = null,
 )
 
 interface ApiService {
     @GET("exec")
-    suspend fun getData(): ApiResponse
+    suspend fun getClients(@Query("option") option: String = "clientes"): List<Client>
 
     companion object {
         private const val BASE_URL = "https://script.google.com/macros/s/AKfycbyMfVdXPP28YqpxfgXSNlBjlnaSD-ltURq8A7TTLFlVIbhVGh43Y1qJtKV5lASf1t23/"
