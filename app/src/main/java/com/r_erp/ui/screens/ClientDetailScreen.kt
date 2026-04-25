@@ -36,7 +36,7 @@ import kotlinx.coroutines.launch
 fun ClientDetailScreen(clientId: Int, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    var isLoading by remember { mutableStateOf(value = true) }
+    var isLoading by remember { mutableStateOf(value = clientId != -1) }
     var isSaving by remember { mutableStateOf(value = false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -50,23 +50,25 @@ fun ClientDetailScreen(clientId: Int, onBack: () -> Unit) {
     var cpf by remember { mutableStateOf("") }
 
     LaunchedEffect(clientId) {
-        try {
-            val apiService = ApiService.create()
-            val fetchedClient = apiService.getClient(id = clientId)
-            
-            // Initialize states
-            fullname = fetchedClient.fullname
-            phone = fetchedClient.phone
-            email = fetchedClient.email ?: ""
-            address = fetchedClient.address ?: ""
-            city = fetchedClient.city ?: ""
-            state = fetchedClient.state ?: ""
-            cpf = fetchedClient.cpf ?: ""
-            
-            isLoading = false
-        } catch (e: Exception) {
-            errorMessage = e.message ?: "Erro ao carregar dados"
-            isLoading = false
+        if (clientId != -1) {
+            try {
+                val apiService = ApiService.create()
+                val fetchedClient = apiService.getClient(id = clientId)
+
+                // Initialize states
+                fullname = fetchedClient.fullname
+                phone = fetchedClient.phone
+                email = fetchedClient.email ?: ""
+                address = fetchedClient.address ?: ""
+                city = fetchedClient.city ?: ""
+                state = fetchedClient.state ?: ""
+                cpf = fetchedClient.cpf ?: ""
+
+                isLoading = false
+            } catch (e: Exception) {
+                errorMessage = e.message ?: "Erro ao carregar dados"
+                isLoading = false
+            }
         }
     }
 
@@ -92,7 +94,11 @@ fun ClientDetailScreen(clientId: Int, onBack: () -> Unit) {
                     .padding(16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Text(text = "Editar Cliente ID: $clientId", style = MaterialTheme.typography.headlineSmall)
+                if (clientId == -1) {
+                    Text(text = "Novo Cliente", style = MaterialTheme.typography.headlineSmall)
+                } else {
+                    Text(text = "Editar Cliente ID: $clientId", style = MaterialTheme.typography.headlineSmall)
+                }
                 
                 OutlinedTextField(
                     value = fullname,
@@ -139,7 +145,7 @@ fun ClientDetailScreen(clientId: Int, onBack: () -> Unit) {
                 OutlinedTextField(
                     value = cpf,
                     onValueChange = { cpf = it },
-                    label = { Text("CPF/CNPJ") },
+                    label = { Text("CPF") },
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -162,7 +168,7 @@ fun ClientDetailScreen(clientId: Int, onBack: () -> Unit) {
                                     cpf = cpf
                                 )
                                 apiService.updateClient(client = clientToUpdate)
-                                Toast.makeText(context, "Cliente atualizado com sucesso!", Toast.LENGTH_SHORT).show()
+                                Toast.makeText(context, "Cliente salvo com sucesso!", Toast.LENGTH_SHORT).show()
                                 onBack()
                             } catch (e: Exception) {
                                 Toast.makeText(context, "Erro ao salvar: ${e.message}", Toast.LENGTH_LONG).show()
