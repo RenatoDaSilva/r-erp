@@ -65,6 +65,13 @@ interface ApiService {
         @Body supplier: Supplier
     ): ResponseBody
 
+    // Agenda
+    @GET("exec")
+    suspend fun getAgenda(
+        @Query("option") option: String = "agenda",
+        @Query("date") date: String
+    ): List<Map<String, Any>>
+
     companion object {
         private const val BASE_URL = "https://script.google.com/macros/s/AKfycbyMfVdXPP28YqpxfgXSNlBjlnaSD-ltURq8A7TTLFlVIbhVGh43Y1qJtKV5lASf1t23/"
 

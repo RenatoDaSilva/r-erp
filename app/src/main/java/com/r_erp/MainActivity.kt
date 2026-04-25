@@ -14,6 +14,7 @@ import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShoppingCart
@@ -47,6 +48,7 @@ import com.r_erp.ui.screens.ClientsScreen
 import com.r_erp.ui.screens.ClientDetailScreen
 import com.r_erp.ui.screens.SuppliersScreen
 import com.r_erp.ui.screens.SupplierDetailScreen
+import com.r_erp.ui.screens.AgendaScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -72,6 +74,7 @@ fun MainScreen() {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val items = listOf(
+        NavigationItem("Agenda", Icons.Default.Event),
         NavigationItem("Clientes", Icons.Default.Person),
         NavigationItem("Fornecedores", Icons.Default.Business),
         NavigationItem("Produtos", Icons.Default.ShoppingCart),
@@ -143,6 +146,8 @@ fun MainScreen() {
                     .padding(innerPadding),
             ) {
                 when (items[selectedItemIndex].title) {
+                    "Agenda" -> AgendaScreen()
+
                     "Clientes" -> {
                         if (selectedId != null) {
                             ClientDetailScreen(clientId = selectedId!!) {
