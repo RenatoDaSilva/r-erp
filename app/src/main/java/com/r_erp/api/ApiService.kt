@@ -20,7 +20,20 @@ data class Client(
     val date: String? = null,
 )
 
+data class Supplier(
+    val id: Int,
+    val fullname: String,
+    val phone: String,
+    val email: String? = null,
+    val address: String? = null,
+    val city: String? = null,
+    val state: String? = null,
+    val cpf: String? = null, // Can be CNPJ
+    val date: String? = null,
+)
+
 interface ApiService {
+    // Clients
     @GET("exec")
     suspend fun getClients(@Query("option") option: String = "clientes"): List<Client>
 
@@ -34,6 +47,22 @@ interface ApiService {
     suspend fun updateClient(
         @Query("option") option: String = "cliente",
         @Body client: Client
+    ): ResponseBody
+
+    // Suppliers
+    @GET("exec")
+    suspend fun getSuppliers(@Query("option") option: String = "fornecedores"): List<Supplier>
+
+    @GET("exec")
+    suspend fun getSupplier(
+        @Query("option") option: String = "fornecedor",
+        @Query("id") id: Int
+    ): Supplier
+
+    @POST("exec")
+    suspend fun updateSupplier(
+        @Query("option") option: String = "fornecedor",
+        @Body supplier: Supplier
     ): ResponseBody
 
     companion object {

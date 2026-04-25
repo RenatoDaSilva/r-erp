@@ -45,6 +45,8 @@ import androidx.compose.ui.unit.dp
 import com.r_erp.ui.theme.RerpTheme
 import com.r_erp.ui.screens.ClientsScreen
 import com.r_erp.ui.screens.ClientDetailScreen
+import com.r_erp.ui.screens.SuppliersScreen
+import com.r_erp.ui.screens.SupplierDetailScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -79,7 +81,7 @@ fun MainScreen() {
         NavigationItem("Pedidos", Icons.AutoMirrored.Filled.Assignment),
     )
     var selectedItemIndex by rememberSaveable { mutableIntStateOf(0) }
-    var selectedClientId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var selectedId by rememberSaveable { mutableStateOf<Int?>(null) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -92,7 +94,7 @@ fun MainScreen() {
                         selected = index == selectedItemIndex,
                         onClick = {
                             selectedItemIndex = index
-                            selectedClientId = null
+                            selectedId = null
                             scope.launch {
                                 drawerState.close()
                             }
@@ -113,9 +115,12 @@ fun MainScreen() {
             topBar = {
                 TopAppBar(
                     title = {
-                        Text(
-                            text = if (selectedClientId != null) "Dados do Cliente" else items[selectedItemIndex].title
-                        )
+                        val title = when {
+                            selectedId != null && items[selectedItemIndex].title == "Clientes" -> "Dados do Cliente"
+                            selectedId != null && items[selectedItemIndex].title == "Fornecedores" -> "Dados do Fornecedor"
+                            else -> items[selectedItemIndex].title
+                        }
+                        Text(text = title)
                     },
                     navigationIcon = {
                         IconButton(onClick = {
@@ -139,12 +144,22 @@ fun MainScreen() {
             ) {
                 when (items[selectedItemIndex].title) {
                     "Clientes" -> {
-                        if (selectedClientId != null) {
-                            ClientDetailScreen(clientId = selectedClientId!!) {
-                                selectedClientId = null
+                        if (selectedId != null) {
+                            ClientDetailScreen(clientId = selectedId!!) {
+                                selectedId = null
                             }
                         } else {
-                            ClientsScreen(onClientClick = { id -> selectedClientId = id })
+                            ClientsScreen(onClientClick = { id -> selectedId = id })
+                        }
+                    }
+
+                    "Fornecedores" -> {
+                        if (selectedId != null) {
+                            SupplierDetailScreen(supplierId = selectedId!!) {
+                                selectedId = null
+                            }
+                        } else {
+                            SuppliersScreen(onSupplierClick = { id -> selectedId = id })
                         }
                     }
 
