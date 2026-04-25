@@ -33,6 +33,7 @@ import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -43,6 +44,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.r_erp.ui.theme.RerpTheme
 import com.r_erp.ui.screens.ClientsScreen
+import com.r_erp.ui.screens.ClientDetailScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -77,6 +79,7 @@ fun MainScreen() {
         NavigationItem("Pedidos", Icons.AutoMirrored.Filled.Assignment),
     )
     var selectedItemIndex by rememberSaveable { mutableIntStateOf(0) }
+    var selectedClientId by rememberSaveable { mutableStateOf<Int?>(null) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -89,6 +92,7 @@ fun MainScreen() {
                         selected = index == selectedItemIndex,
                         onClick = {
                             selectedItemIndex = index
+                            selectedClientId = null
                             scope.launch {
                                 drawerState.close()
                             }
@@ -108,7 +112,11 @@ fun MainScreen() {
         Scaffold(
             topBar = {
                 TopAppBar(
-                    title = { Text(text = items[selectedItemIndex].title) },
+                    title = {
+                        Text(
+                            text = if (selectedClientId != null) "Dados do Cliente" else items[selectedItemIndex].title
+                        )
+                    },
                     navigationIcon = {
                         IconButton(onClick = {
                             scope.launch {
@@ -130,7 +138,16 @@ fun MainScreen() {
                     .padding(innerPadding),
             ) {
                 when (items[selectedItemIndex].title) {
-                    "Clientes" -> ClientsScreen()
+                    "Clientes" -> {
+                        if (selectedClientId != null) {
+                            ClientDetailScreen(clientId = selectedClientId!!) {
+                                selectedClientId = null
+                            }
+                        } else {
+                            ClientsScreen(onClientClick = { id -> selectedClientId = id })
+                        }
+                    }
+
                     else -> {
                         Box(
                             modifier = Modifier.fillMaxSize(),

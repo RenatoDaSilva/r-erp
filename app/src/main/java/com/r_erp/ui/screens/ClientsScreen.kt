@@ -1,5 +1,6 @@
 package com.r_erp.ui.screens
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -25,7 +26,7 @@ import com.r_erp.api.ApiService
 import com.r_erp.api.Client
 
 @Composable
-fun ClientsScreen() {
+fun ClientsScreen(onClientClick: (Int) -> Unit) {
     var clients by remember { mutableStateOf<List<Client>>(emptyList()) }
     var isLoading by remember { mutableStateOf(value = true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -62,7 +63,7 @@ fun ClientsScreen() {
                     .padding(16.dp)
             ) {
                 items(clients) { client ->
-                    ClientItem(client)
+                    ClientItem(client, onClick = { onClientClick(client.id) })
                 }
             }
         }
@@ -70,18 +71,19 @@ fun ClientsScreen() {
 }
 
 @Composable
-fun ClientItem(client: Client) {
+fun ClientItem(client: Client, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 8.dp)
+            .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(
             modifier = Modifier
                 .padding(16.dp)
         ) {
-            Text(text = client.id.toString(), style = MaterialTheme.typography.labelMedium)
+            Text(text = "ID: ${client.id}", style = MaterialTheme.typography.labelMedium)
             Text(text = client.fullname, style = MaterialTheme.typography.titleLarge)
             Text(text = client.phone, style = MaterialTheme.typography.bodyMedium)
         }

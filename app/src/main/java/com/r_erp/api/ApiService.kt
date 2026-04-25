@@ -21,6 +21,12 @@ interface ApiService {
     @GET("exec")
     suspend fun getClients(@Query("option") option: String = "clientes"): List<Client>
 
+    @GET("exec")
+    suspend fun getClient(
+        @Query("option") option: String = "cliente",
+        @Query("id") id: Int
+    ): Client
+
     companion object {
         private const val BASE_URL = "https://script.google.com/macros/s/AKfycbyMfVdXPP28YqpxfgXSNlBjlnaSD-ltURq8A7TTLFlVIbhVGh43Y1qJtKV5lASf1t23/"
 
