@@ -83,7 +83,7 @@ fun ClientItem(client: Client, onClick: () -> Unit) {
             modifier = Modifier
                 .padding(16.dp)
         ) {
-            Text(text = "ID: ${client.id}", style = MaterialTheme.typography.labelMedium)
+            Text(text = client.id.toString(), style = MaterialTheme.typography.labelMedium)
             Text(text = client.fullname, style = MaterialTheme.typography.titleLarge)
             Text(text = client.phone, style = MaterialTheme.typography.bodyMedium)
         }

@@ -21,15 +21,23 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+import android.widget.Toast
 import com.r_erp.api.ApiService
+import com.r_erp.api.Client
+import kotlinx.coroutines.launch
 
 @Composable
 fun ClientDetailScreen(clientId: Int, onBack: () -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     var isLoading by remember { mutableStateOf(value = true) }
+    var isSaving by remember { mutableStateOf(value = false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     // Editable states
@@ -82,7 +90,7 @@ fun ClientDetailScreen(clientId: Int, onBack: () -> Unit) {
                     .fillMaxSize()
                     .verticalScroll(rememberScrollState())
                     .padding(16.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(text = "Editar Cliente ID: $clientId", style = MaterialTheme.typography.headlineSmall)
                 
@@ -138,9 +146,41 @@ fun ClientDetailScreen(clientId: Int, onBack: () -> Unit) {
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
-                    onClick = { /* TODO: Implement save logic */ },
-                    modifier = Modifier.fillMaxWidth()
+                    onClick = {
+                        isSaving = true
+                        scope.launch {
+                            try {
+                                val apiService = ApiService.create()
+                                val clientToUpdate = Client(
+                                    id = clientId,
+                                    fullname = fullname,
+                                    phone = phone,
+                                    email = email,
+                                    address = address,
+                                    city = city,
+                                    state = state,
+                                    cpf = cpf
+                                )
+                                apiService.updateClient(client = clientToUpdate)
+                                Toast.makeText(context, "Cliente atualizado com sucesso!", Toast.LENGTH_SHORT).show()
+                                onBack()
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Erro ao salvar: ${e.message}", Toast.LENGTH_LONG).show()
+                            } finally {
+                                isSaving = false
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = !isSaving
                 ) {
+                    if (isSaving) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(end = 8.dp),
+                            strokeWidth = 2.dp,
+                            color = MaterialTheme.colorScheme.onPrimary
+                        )
+                    }
                     Text("Salvar")
                 }
                 

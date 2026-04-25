@@ -1,8 +1,11 @@
 package com.r_erp.api
 
+import okhttp3.ResponseBody
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
+import retrofit2.http.Body
 import retrofit2.http.GET
+import retrofit2.http.POST
 import retrofit2.http.Query
 
 data class Client(
@@ -26,6 +29,12 @@ interface ApiService {
         @Query("option") option: String = "cliente",
         @Query("id") id: Int
     ): Client
+
+    @POST("exec")
+    suspend fun updateClient(
+        @Query("option") option: String = "cliente",
+        @Body client: Client
+    ): ResponseBody
 
     companion object {
         private const val BASE_URL = "https://script.google.com/macros/s/AKfycbyMfVdXPP28YqpxfgXSNlBjlnaSD-ltURq8A7TTLFlVIbhVGh43Y1qJtKV5lASf1t23/"
