@@ -49,6 +49,7 @@ import com.r_erp.ui.screens.ClientDetailScreen
 import com.r_erp.ui.screens.SuppliersScreen
 import com.r_erp.ui.screens.SupplierDetailScreen
 import com.r_erp.ui.screens.AgendaScreen
+import com.r_erp.ui.screens.AddAgendaItemScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -85,6 +86,7 @@ fun MainScreen() {
     )
     var selectedItemIndex by rememberSaveable { mutableIntStateOf(0) }
     var selectedId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var isAddingAgendaItem by rememberSaveable { mutableStateOf(false) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -98,6 +100,7 @@ fun MainScreen() {
                         onClick = {
                             selectedItemIndex = index
                             selectedId = null
+                            isAddingAgendaItem = false
                             scope.launch {
                                 drawerState.close()
                             }
@@ -119,6 +122,7 @@ fun MainScreen() {
                 TopAppBar(
                     title = {
                         val title = when {
+                            isAddingAgendaItem -> "Novo Agendamento"
                             selectedId != null && items[selectedItemIndex].title == "Clientes" -> "Dados do Cliente"
                             selectedId != null && items[selectedItemIndex].title == "Fornecedores" -> "Dados do Fornecedor"
                             else -> items[selectedItemIndex].title
@@ -146,7 +150,13 @@ fun MainScreen() {
                     .padding(innerPadding),
             ) {
                 when (items[selectedItemIndex].title) {
-                    "Agenda" -> AgendaScreen()
+                    "Agenda" -> {
+                        if (isAddingAgendaItem) {
+                            AddAgendaItemScreen(onBack = { isAddingAgendaItem = false })
+                        } else {
+                            AgendaScreen(onAddAgendaItem = { isAddingAgendaItem = true })
+                        }
+                    }
 
                     "Clientes" -> {
                         if (selectedId != null) {

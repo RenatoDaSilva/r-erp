@@ -80,6 +80,12 @@ interface ApiService {
         @Query("date") date: String
     ): List<AgendaItem>
 
+    @POST("exec")
+    suspend fun addAgendaItem(
+        @Query("option") option: String = "agenda",
+        @Body item: AgendaItem
+    ): ResponseBody
+
     companion object {
         private const val BASE_URL = "https://script.google.com/macros/s/AKfycbyMfVdXPP28YqpxfgXSNlBjlnaSD-ltURq8A7TTLFlVIbhVGh43Y1qJtKV5lASf1t23/"
 
