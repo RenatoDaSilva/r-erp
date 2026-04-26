@@ -32,6 +32,14 @@ data class Supplier(
     val date: String? = null,
 )
 
+data class AgendaItem(
+    val title: String,
+    val description: String? = null,
+    val startTime: String? = null,
+    val endTime: String? = null,
+    val fullDay: Boolean = false,
+)
+
 interface ApiService {
     // Clients
     @GET("exec")
@@ -70,7 +78,7 @@ interface ApiService {
     suspend fun getAgenda(
         @Query("option") option: String = "agenda",
         @Query("date") date: String
-    ): List<Map<String, Any>>
+    ): List<AgendaItem>
 
     companion object {
         private const val BASE_URL = "https://script.google.com/macros/s/AKfycbyMfVdXPP28YqpxfgXSNlBjlnaSD-ltURq8A7TTLFlVIbhVGh43Y1qJtKV5lASf1t23/"

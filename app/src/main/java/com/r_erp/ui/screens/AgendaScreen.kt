@@ -5,8 +5,10 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -31,8 +33,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.ApiService
+import com.r_erp.api.AgendaItem
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -43,7 +47,7 @@ import java.util.TimeZone
 fun AgendaScreen() {
     var selectedDateMillis by remember { mutableStateOf(System.currentTimeMillis()) }
     var showDatePicker by remember { mutableStateOf(false) }
-    var agendaItems by remember { mutableStateOf<List<Map<String, Any>>>(emptyList()) }
+    var agendaItems by remember { mutableStateOf<List<AgendaItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
@@ -153,25 +157,77 @@ fun AgendaScreen() {
 }
 
 @Composable
-fun AgendaItemCard(item: Map<String, Any>) {
+fun AgendaItemCard(item: AgendaItem) {
     Card(
         modifier = Modifier.fillMaxWidth(),
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
     ) {
         Column(modifier = Modifier.padding(16.dp)) {
-            item.forEach { (key, value) ->
-                Row(modifier = Modifier.padding(vertical = 2.dp)) {
+            Text(
+                text = item.title,
+                style = MaterialTheme.typography.titleLarge,
+                color = MaterialTheme.colorScheme.primary,
+                fontWeight = FontWeight.Bold
+            )
+            
+            item.description?.let {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = it,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(8.dp))
+
+            if (!item.fullDay) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "$key: ",
+                        text = "Início: ",
                         style = MaterialTheme.typography.labelLarge,
-                        color = MaterialTheme.colorScheme.primary
+                        fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = value.toString(),
+                        text = formatTime(item.startTime),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "Fim: ",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = formatTime(item.endTime),
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
             }
+            
+            if (item.fullDay) {
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = "Dia inteiro",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.secondary
+                )
+            }
         }
+    }
+}
+
+private fun formatTime(isoString: String?): String {
+    if (isoString == null) return "N/A"
+    return try {
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'", Locale.getDefault()).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }
+        val outputFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val date = inputFormat.parse(isoString)
+        if (date != null) outputFormat.format(date) else isoString
+    } catch (e: Exception) {
+        isoString
     }
 }
