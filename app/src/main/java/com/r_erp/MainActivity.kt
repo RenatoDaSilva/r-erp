@@ -50,6 +50,8 @@ import com.r_erp.ui.screens.SuppliersScreen
 import com.r_erp.ui.screens.SupplierDetailScreen
 import com.r_erp.ui.screens.AgendaScreen
 import com.r_erp.ui.screens.AddAgendaItemScreen
+import com.r_erp.ui.screens.ProductsScreen
+import com.r_erp.ui.screens.ProductDetailScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -125,6 +127,7 @@ fun MainScreen() {
                             isAddingAgendaItem -> "Novo Agendamento"
                             selectedId != null && items[selectedItemIndex].title == "Clientes" -> "Dados do Cliente"
                             selectedId != null && items[selectedItemIndex].title == "Fornecedores" -> "Dados do Fornecedor"
+                            selectedId != null && items[selectedItemIndex].title == "Produtos" -> "Dados do Produto"
                             else -> items[selectedItemIndex].title
                         }
                         Text(text = title)
@@ -175,6 +178,16 @@ fun MainScreen() {
                             }
                         } else {
                             SuppliersScreen(onSupplierClick = { id -> selectedId = id })
+                        }
+                    }
+
+                    "Produtos" -> {
+                        if (selectedId != null) {
+                            ProductDetailScreen(productId = selectedId!!) {
+                                selectedId = null
+                            }
+                        } else {
+                            ProductsScreen(onProductClick = { id -> selectedId = id })
                         }
                     }
 

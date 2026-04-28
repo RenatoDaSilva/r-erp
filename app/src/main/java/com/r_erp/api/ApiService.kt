@@ -40,6 +40,21 @@ data class AgendaItem(
     val fullDay: Boolean = false,
 )
 
+data class Product(
+    val id: Int,
+    val description: String,
+    val type: String,
+    val unit: String,
+    val price: Double,
+    val stock: Double,
+    val cost: Double? = null
+)
+
+data class ListsResponse(
+    val types: List<String>,
+    val units: List<String>
+)
+
 interface ApiService {
     // Clients
     @GET("exec")
@@ -85,6 +100,26 @@ interface ApiService {
         @Query("option") option: String = "agenda",
         @Body item: AgendaItem
     ): ResponseBody
+
+    // Products
+    @GET("exec")
+    suspend fun getProducts(@Query("option") option: String = "produtos"): List<Product>
+
+    @GET("exec")
+    suspend fun getProduct(
+        @Query("option") option: String = "produto",
+        @Query("id") id: Int
+    ): Product
+
+    @POST("exec")
+    suspend fun updateProduct(
+        @Query("option") option: String = "produto",
+        @Body product: Product
+    ): ResponseBody
+
+    // Lists
+    @GET("exec")
+    suspend fun getLists(@Query("option") option: String = "listas"): ListsResponse
 
     companion object {
         private const val BASE_URL = "https://script.google.com/macros/s/AKfycbyMfVdXPP28YqpxfgXSNlBjlnaSD-ltURq8A7TTLFlVIbhVGh43Y1qJtKV5lASf1t23/"
