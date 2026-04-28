@@ -1,5 +1,6 @@
 package com.r_erp.ui.screens
 
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -31,11 +32,13 @@ import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.ApiService
@@ -53,6 +56,7 @@ fun AgendaScreen(onAddAgendaItem: () -> Unit) {
     var agendaItems by remember { mutableStateOf<List<AgendaItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var offsetX by remember { mutableFloatStateOf(0f) }
 
     val apiDateFormatter = remember { 
         SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
@@ -136,8 +140,31 @@ fun AgendaScreen(onAddAgendaItem: () -> Unit) {
                 }
             }
 
-            // List Area
-            Box(modifier = Modifier.fillMaxSize()) {
+            // List Area with Swipe Support
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        detectHorizontalDragGestures(
+                            onHorizontalDrag = { _, dragAmount ->
+                                offsetX += dragAmount
+                            },
+                            onDragEnd = {
+                                if (offsetX > 150) {
+                                    // Swipe Right -> Previous Day
+                                    selectedDateMillis -= 24 * 60 * 60 * 1000
+                                } else if (offsetX < -150) {
+                                    // Swipe Left -> Next Day
+                                    selectedDateMillis += 24 * 60 * 60 * 1000
+                                }
+                                offsetX = 0f
+                            },
+                            onDragCancel = {
+                                offsetX = 0f
+                            }
+                        )
+                    }
+            ) {
                 if (isLoading) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
                 } else if (errorMessage != null) {
