@@ -29,7 +29,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import android.widget.Toast
 import com.r_erp.api.SupabaseService
-import com.r_erp.api.SupabaseClient
+import com.r_erp.api.SupabaseSupplier
 import kotlinx.coroutines.launch
 
 @Composable
@@ -47,7 +47,8 @@ fun SupplierDetailScreen(supplierId: Int, onBack: () -> Unit) {
     var address by remember { mutableStateOf("") }
     var city by remember { mutableStateOf("") }
     var state by remember { mutableStateOf("") }
-    var cpf by remember { mutableStateOf("") }
+    var cpfCnpj by remember { mutableStateOf("") }
+    var pix by remember { mutableStateOf("") }
 
     LaunchedEffect(supplierId) {
         if (supplierId != -1) {
@@ -64,7 +65,8 @@ fun SupplierDetailScreen(supplierId: Int, onBack: () -> Unit) {
                     address = fetchedSupplier.address ?: ""
                     city = fetchedSupplier.city ?: ""
                     state = fetchedSupplier.state ?: ""
-                    cpf = fetchedSupplier.cpf ?: ""
+                    cpfCnpj = fetchedSupplier.cpfCnpj ?: ""
+                    pix = fetchedSupplier.pix ?: ""
                 } else {
                     errorMessage = "Fornecedor não encontrado"
                 }
@@ -148,9 +150,16 @@ fun SupplierDetailScreen(supplierId: Int, onBack: () -> Unit) {
                 )
                 
                 OutlinedTextField(
-                    value = cpf,
-                    onValueChange = { cpf = it },
+                    value = cpfCnpj,
+                    onValueChange = { cpfCnpj = it },
                     label = { Text("CPF / CNPJ") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                OutlinedTextField(
+                    value = pix,
+                    onValueChange = { pix = it },
+                    label = { Text("PIX") },
                     modifier = Modifier.fillMaxWidth()
                 )
 
@@ -162,14 +171,15 @@ fun SupplierDetailScreen(supplierId: Int, onBack: () -> Unit) {
                         scope.launch {
                             try {
                                 val supabaseService = SupabaseService.create()
-                                val supplierToSave = SupabaseClient(
+                                val supplierToSave = SupabaseSupplier(
                                     fullName = fullname,
                                     phone = phone,
                                     email = email,
                                     address = address,
                                     city = city,
                                     state = state,
-                                    cpf = cpf
+                                    cpfCnpj = cpfCnpj,
+                                    pix = pix
                                 )
                                 
                                 if (supplierId == -1) {

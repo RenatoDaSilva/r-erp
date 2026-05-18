@@ -32,11 +32,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.SupabaseService
-import com.r_erp.api.SupabaseClient
+import com.r_erp.api.SupabaseSupplier
 
 @Composable
 fun SuppliersScreen(onSupplierClick: (Int) -> Unit) {
-    var suppliers by remember { mutableStateOf<List<SupabaseClient>>(emptyList()) }
+    var suppliers by remember { mutableStateOf<List<SupabaseSupplier>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(value = true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -133,7 +133,7 @@ fun SuppliersScreen(onSupplierClick: (Int) -> Unit) {
 }
 
 @Composable
-fun SupplierItem(supplier: SupabaseClient, onClick: () -> Unit) {
+fun SupplierItem(supplier: SupabaseSupplier, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -163,8 +163,13 @@ fun SupplierItem(supplier: SupabaseClient, onClick: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
-            supplier.cpf?.let {
+            supplier.cpfCnpj?.let {
                 Text(text = "CPF/CNPJ: $it", style = MaterialTheme.typography.bodyMedium)
+            }
+            supplier.pix?.let {
+                if (it.isNotEmpty()) {
+                    Text(text = "PIX: $it", style = MaterialTheme.typography.bodyMedium)
+                }
             }
         }
     }

@@ -25,6 +25,19 @@ data class SupabaseClient(
     @SerializedName("created_at") val createdAt: String? = null
 )
 
+data class SupabaseSupplier(
+    val id: Int? = null,
+    @SerializedName("fullname") val fullName: String? = null,
+    val phone: String? = null,
+    val email: String? = null,
+    val address: String? = null,
+    val city: String? = null,
+    val state: String? = null,
+    @SerializedName("cpfcnpj") val cpfCnpj: String? = null,
+    val pix: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null
+)
+
 data class SupabaseProduct(
     val id: Int? = null,
     val description: String? = null,
@@ -100,18 +113,18 @@ interface SupabaseService {
     suspend fun getClient(@Query("id") idFilter: String): List<SupabaseClient>
 
     @GET("suppliers")
-    suspend fun getSuppliers(): List<SupabaseClient>
+    suspend fun getSuppliers(): List<SupabaseSupplier>
 
     @GET("suppliers")
-    suspend fun getSupplier(@Query("id") idFilter: String): List<SupabaseClient>
+    suspend fun getSupplier(@Query("id") idFilter: String): List<SupabaseSupplier>
 
     @POST("suppliers")
-    suspend fun createSupplier(@Body supplier: SupabaseClient): ResponseBody
+    suspend fun createSupplier(@Body supplier: SupabaseSupplier): ResponseBody
 
     @PATCH("suppliers")
     suspend fun updateSupplier(
         @Query("id") idFilter: String,
-        @Body supplier: SupabaseClient
+        @Body supplier: SupabaseSupplier
     ): ResponseBody
 
     @POST("clients")
