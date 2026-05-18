@@ -27,19 +27,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.r_erp.api.ApiService
-import com.r_erp.api.Supplier
+import com.r_erp.api.SupabaseService
+import com.r_erp.api.SupabaseClient
 
 @Composable
 fun SuppliersScreen(onSupplierClick: (Int) -> Unit) {
-    var suppliers by remember { mutableStateOf<List<Supplier>>(emptyList()) }
+    var suppliers by remember { mutableStateOf<List<SupabaseClient>>(emptyList()) }
     var isLoading by remember { mutableStateOf(value = true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         try {
-            val apiService = ApiService.create()
-            suppliers = apiService.getSuppliers(option = "fornecedores")
+            val supabaseService = SupabaseService.create()
+            suppliers = supabaseService.getSuppliers()
             isLoading = false
         } catch (e: Exception) {
             errorMessage = e.message ?: "Erro desconhecido"
@@ -76,10 +76,10 @@ fun SuppliersScreen(onSupplierClick: (Int) -> Unit) {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp)
+                        .padding(horizontal = 16.dp)
                 ) {
                     items(suppliers) { supplier ->
-                        SupplierItem(supplier, onClick = { onSupplierClick(supplier.id) })
+                        SupplierItem(supplier, onClick = { onSupplierClick(supplier.id ?: 0) })
                     }
                 }
             }
@@ -88,7 +88,7 @@ fun SuppliersScreen(onSupplierClick: (Int) -> Unit) {
 }
 
 @Composable
-fun SupplierItem(supplier: Supplier, onClick: () -> Unit) {
+fun SupplierItem(supplier: SupabaseClient, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -100,9 +100,27 @@ fun SupplierItem(supplier: Supplier, onClick: () -> Unit) {
             modifier = Modifier
                 .padding(16.dp)
         ) {
-            Text(text = "ID: ${supplier.id}", style = MaterialTheme.typography.labelMedium)
-            Text(text = supplier.fullname, style = MaterialTheme.typography.titleLarge)
-            Text(text = "Tel: ${supplier.phone}", style = MaterialTheme.typography.bodyMedium)
+            Text(text = "ID: ${supplier.id ?: "N/A"}", style = MaterialTheme.typography.labelMedium)
+            Text(text = supplier.fullName ?: "Sem Nome", style = MaterialTheme.typography.titleLarge)
+            
+            supplier.phone?.let {
+                Text(text = "Tel: $it", style = MaterialTheme.typography.bodyMedium)
+            }
+            supplier.email?.let {
+                Text(text = "E-mail: $it", style = MaterialTheme.typography.bodyMedium)
+            }
+            supplier.address?.let {
+                Text(text = "Endereço: $it", style = MaterialTheme.typography.bodyMedium)
+            }
+            if (!supplier.city.isNullOrEmpty() || !supplier.state.isNullOrEmpty()) {
+                Text(
+                    text = "Local: ${supplier.city ?: ""} - ${supplier.state ?: ""}",
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            supplier.cpf?.let {
+                Text(text = "CPF/CNPJ: $it", style = MaterialTheme.typography.bodyMedium)
+            }
         }
     }
 }
