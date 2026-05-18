@@ -48,7 +48,29 @@ data class SupabaseType(
     @SerializedName("created_at") val createdAt: String? = null
 )
 
+data class SupabaseServiceItem(
+    val id: Int? = null,
+    val description: String? = null,
+    val price: Double? = null,
+    @SerializedName("created_at") val createdAt: String? = null
+)
+
 interface SupabaseService {
+
+    @GET("services")
+    suspend fun getServices(): List<SupabaseServiceItem>
+
+    @GET("services")
+    suspend fun getService(@Query("id") idFilter: String): List<SupabaseServiceItem>
+
+    @POST("services")
+    suspend fun createService(@Body service: SupabaseServiceItem): ResponseBody
+
+    @PATCH("services")
+    suspend fun updateService(
+        @Query("id") idFilter: String,
+        @Body service: SupabaseServiceItem
+    ): ResponseBody
 
     @GET("product_types")
     suspend fun getProductTypes(): List<SupabaseType>

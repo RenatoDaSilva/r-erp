@@ -52,6 +52,8 @@ import com.r_erp.ui.screens.AgendaScreen
 import com.r_erp.ui.screens.AddAgendaItemScreen
 import com.r_erp.ui.screens.ProductsScreen
 import com.r_erp.ui.screens.ProductDetailScreen
+import com.r_erp.ui.screens.ServicesScreen
+import com.r_erp.ui.screens.ServiceDetailScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -128,6 +130,7 @@ fun MainScreen() {
                             selectedId != null && items[selectedItemIndex].title == "Clientes" -> "Dados do Cliente"
                             selectedId != null && items[selectedItemIndex].title == "Fornecedores" -> "Dados do Fornecedor"
                             selectedId != null && items[selectedItemIndex].title == "Produtos" -> "Dados do Produto"
+                            selectedId != null && items[selectedItemIndex].title == "Serviços" -> "Dados do Serviço"
                             else -> items[selectedItemIndex].title
                         }
                         Text(text = title)
@@ -188,6 +191,16 @@ fun MainScreen() {
                             }
                         } else {
                             ProductsScreen(onProductClick = { id -> selectedId = id })
+                        }
+                    }
+
+                    "Serviços" -> {
+                        if (selectedId != null) {
+                            ServiceDetailScreen(serviceId = selectedId!!) {
+                                selectedId = null
+                            }
+                        } else {
+                            ServicesScreen(onServiceClick = { id -> selectedId = id })
                         }
                     }
 
