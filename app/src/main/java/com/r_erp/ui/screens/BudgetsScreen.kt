@@ -1,0 +1,279 @@
+package com.r_erp.ui.screens
+
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.r_erp.api.SupabaseBudget
+import com.r_erp.api.SupabaseBudgetItem
+import com.r_erp.api.SupabaseService
+import java.text.SimpleDateFormat
+import java.util.Locale
+import java.util.TimeZone
+
+@Composable
+fun BudgetsScreen() {
+    var budgets by remember { mutableStateOf<List<SupabaseBudget>>(emptyList()) }
+    var searchQuery by remember { mutableStateOf("") }
+    var isLoading by remember { mutableStateOf(value = true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val filteredBudgets = remember(searchQuery, budgets) {
+        if (searchQuery.isBlank()) {
+            budgets
+        } else {
+            budgets.filter {
+                it.clientName?.contains(searchQuery, ignoreCase = true) == true
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) {
+        try {
+            val supabaseService = SupabaseService.create()
+            budgets = supabaseService.getBudgetsWithItems()
+            isLoading = false
+        } catch (e: Exception) {
+            errorMessage = e.message ?: e.toString()
+            isLoading = false
+        }
+    }
+
+    Scaffold { padding ->
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(padding)
+        ) {
+            if (!isLoading && errorMessage == null && budgets.isNotEmpty()) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    placeholder = { Text("Filtrar por cliente...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Limpar")
+                            }
+                        }
+                    },
+                    singleLine = true
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                } else if (errorMessage != null) {
+                    Text(
+                        text = errorMessage!!,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                } else if (budgets.isEmpty()) {
+                    Text(
+                        text = "Nenhum orçamento encontrado.",
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                } else if (filteredBudgets.isEmpty()) {
+                    Text(
+                        text = "Nenhum orçamento corresponde ao filtro.",
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        items(filteredBudgets) { budget ->
+                            BudgetItem(budget)
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun BudgetItem(budget: SupabaseBudget) {
+    val highlightColor = MaterialTheme.colorScheme.primary
+    val cardBorder = if (budget.orderId == null) {
+        BorderStroke(2.dp, highlightColor)
+    } else {
+        null
+    }
+
+    Card(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+        border = cardBorder
+    ) {
+        Column(
+            modifier = Modifier
+                .padding(16.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    text = formatDate(budget.createdAt),
+                    style = MaterialTheme.typography.labelMedium
+                )
+                if (budget.orderId != null) {
+                    Text(
+                        text = "Pedido: ${budget.orderId}",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.secondary
+                    )
+                }
+            }
+            
+            Text(
+                text = budget.clientName ?: "Cliente não informado",
+                style = MaterialTheme.typography.titleLarge,
+                fontWeight = FontWeight.Bold
+            )
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(
+                    text = "Validade: ${formatDate(budget.validUntil)}",
+                    style = MaterialTheme.typography.bodySmall
+                )
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // Items table
+            budget.items?.let { items ->
+                val displayItems = items.take(3)
+                
+                Column(modifier = Modifier.fillMaxWidth()) {
+                    // Header
+                    Row(modifier = Modifier.fillMaxWidth()) {
+                        Text(text = "Desc.", modifier = Modifier.weight(3f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        Text(text = "Qtd", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        Text(text = "Preço", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        Text(text = "Desc.", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        Text(text = "Total", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                    }
+                    HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+                    
+                    displayItems.forEach { item ->
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            Text(text = item.description ?: "", modifier = Modifier.weight(3f), fontSize = 10.sp, maxLines = 1)
+                            Text(text = formatDecimal(item.quantity), modifier = Modifier.weight(1f), fontSize = 10.sp)
+                            Text(text = formatDecimal(item.price), modifier = Modifier.weight(1.5f), fontSize = 10.sp)
+                            Text(text = formatDecimal(item.discount), modifier = Modifier.weight(1.5f), fontSize = 10.sp)
+                            Text(text = formatDecimal(item.total), modifier = Modifier.weight(1.5f), fontSize = 10.sp)
+                        }
+                    }
+
+                    if (items.size > 3) {
+                        val remaining = (budget.itemsCount ?: items.size) - 3
+                        Text(
+                            text = "... mais $remaining itens",
+                            style = MaterialTheme.typography.bodySmall,
+                            modifier = Modifier.padding(top = 4.dp),
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Column {
+                    Text(text = "Total Itens: ${formatDecimal(budget.totalItems)}", style = MaterialTheme.typography.bodySmall)
+                    Text(text = "Desconto: ${formatDecimal(budget.discount)}", style = MaterialTheme.typography.bodySmall)
+                }
+                Text(
+                    text = "TOTAL: ${formatDecimal(budget.total)}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            budget.message?.let {
+                if (it.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = it,
+                        style = MaterialTheme.typography.bodySmall,
+                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun formatDate(dateStr: String?): String {
+    if (dateStr == null) return "N/A"
+    return try {
+        // Handle various date formats if necessary, assuming ISO or similar
+        val inputFormat = SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).apply {
+            timeZone = TimeZone.getTimeZone("UTC")
+        }
+        val outputFormat = SimpleDateFormat("dd/MM/yyyy", Locale.US)
+        val date = inputFormat.parse(dateStr.take(19)) // Take date and time part
+        if (date != null) outputFormat.format(date) else dateStr
+    } catch (e: Exception) {
+        // Fallback for simple yyyy-MM-dd
+        try {
+            val inputFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+            val outputFormat = SimpleDateFormat("dd/MM/yyyy", Locale.US)
+            val date = inputFormat.parse(dateStr)
+            if (date != null) outputFormat.format(date) else dateStr
+        } catch (e2: Exception) {
+            dateStr
+        }
+    }
+}
+
+private fun formatDecimal(value: Double?): String {
+    return String.format(Locale.US, "%.2f", value ?: 0.0)
+}

@@ -69,7 +69,32 @@ data class SupabaseServiceItem(
     @SerializedName("created_at") val createdAt: String? = null
 )
 
+data class SupabaseBudgetItem(
+    val description: String? = null,
+    val quantity: Double? = null,
+    val price: Double? = null,
+    val discount: Double? = null,
+    val total: Double? = null
+)
+
+data class SupabaseBudget(
+    val id: Int? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("client_name") val clientName: String? = null,
+    @SerializedName("valid_until") val validUntil: String? = null,
+    @SerializedName("total_items") val totalItems: Double? = null,
+    val discount: Double? = null,
+    val total: Double? = null,
+    val message: String? = null,
+    @SerializedName("order_id") val orderId: Int? = null,
+    @SerializedName("items_count") val itemsCount: Int? = null,
+    val items: List<SupabaseBudgetItem>? = null
+)
+
 interface SupabaseService {
+
+    @GET("budgets_with_items")
+    suspend fun getBudgetsWithItems(): List<SupabaseBudget>
 
     @GET("services")
     suspend fun getServices(): List<SupabaseServiceItem>

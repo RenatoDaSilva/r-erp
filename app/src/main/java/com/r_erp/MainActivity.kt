@@ -54,6 +54,7 @@ import com.r_erp.ui.screens.ProductsScreen
 import com.r_erp.ui.screens.ProductDetailScreen
 import com.r_erp.ui.screens.ServicesScreen
 import com.r_erp.ui.screens.ServiceDetailScreen
+import com.r_erp.ui.screens.BudgetsScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -202,6 +203,10 @@ fun MainScreen() {
                         } else {
                             ServicesScreen(onServiceClick = { id -> selectedId = id })
                         }
+                    }
+
+                    "Orçamentos" -> {
+                        BudgetsScreen()
                     }
 
                     else -> {
