@@ -36,6 +36,18 @@ interface SupabaseService {
     @GET("suppliers")
     suspend fun getSuppliers(): List<SupabaseClient>
 
+    @GET("suppliers")
+    suspend fun getSupplier(@Query("id") idFilter: String): List<SupabaseClient>
+
+    @POST("suppliers")
+    suspend fun createSupplier(@Body supplier: SupabaseClient): ResponseBody
+
+    @PATCH("suppliers")
+    suspend fun updateSupplier(
+        @Query("id") idFilter: String,
+        @Body supplier: SupabaseClient
+    ): ResponseBody
+
     @POST("clients")
     suspend fun createClient(@Body client: SupabaseClient): ResponseBody
 

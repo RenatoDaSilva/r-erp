@@ -28,8 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import android.widget.Toast
-import com.r_erp.api.ApiService
-import com.r_erp.api.Supplier
+import com.r_erp.api.SupabaseService
+import com.r_erp.api.SupabaseClient
 import kotlinx.coroutines.launch
 
 @Composable
@@ -52,17 +52,22 @@ fun SupplierDetailScreen(supplierId: Int, onBack: () -> Unit) {
     LaunchedEffect(supplierId) {
         if (supplierId != -1) {
             try {
-                val apiService = ApiService.create()
-                val fetchedSupplier = apiService.getSupplier(id = supplierId)
+                val supabaseService = SupabaseService.create()
+                val fetchedSuppliers = supabaseService.getSupplier(idFilter = "eq.$supplierId")
 
-                // Initialize states
-                fullname = fetchedSupplier.fullname
-                phone = fetchedSupplier.phone
-                email = fetchedSupplier.email ?: ""
-                address = fetchedSupplier.address ?: ""
-                city = fetchedSupplier.city ?: ""
-                state = fetchedSupplier.state ?: ""
-                cpf = fetchedSupplier.cpf ?: ""
+                if (fetchedSuppliers.isNotEmpty()) {
+                    val fetchedSupplier = fetchedSuppliers[0]
+                    // Initialize states
+                    fullname = fetchedSupplier.fullName ?: ""
+                    phone = fetchedSupplier.phone ?: ""
+                    email = fetchedSupplier.email ?: ""
+                    address = fetchedSupplier.address ?: ""
+                    city = fetchedSupplier.city ?: ""
+                    state = fetchedSupplier.state ?: ""
+                    cpf = fetchedSupplier.cpf ?: ""
+                } else {
+                    errorMessage = "Fornecedor não encontrado"
+                }
 
                 isLoading = false
             } catch (e: Exception) {
@@ -156,10 +161,9 @@ fun SupplierDetailScreen(supplierId: Int, onBack: () -> Unit) {
                         isSaving = true
                         scope.launch {
                             try {
-                                val apiService = ApiService.create()
-                                val supplierToUpdate = Supplier(
-                                    id = supplierId,
-                                    fullname = fullname,
+                                val supabaseService = SupabaseService.create()
+                                val supplierToSave = SupabaseClient(
+                                    fullName = fullname,
                                     phone = phone,
                                     email = email,
                                     address = address,
@@ -167,7 +171,16 @@ fun SupplierDetailScreen(supplierId: Int, onBack: () -> Unit) {
                                     state = state,
                                     cpf = cpf
                                 )
-                                apiService.updateSupplier(supplier = supplierToUpdate)
+                                
+                                if (supplierId == -1) {
+                                    supabaseService.createSupplier(supplier = supplierToSave)
+                                } else {
+                                    supabaseService.updateSupplier(
+                                        idFilter = "eq.$supplierId",
+                                        supplier = supplierToSave
+                                    )
+                                }
+
                                 Toast.makeText(context, "Fornecedor salvo com sucesso!", Toast.LENGTH_SHORT).show()
                                 onBack()
                             } catch (e: Exception) {
