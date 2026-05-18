@@ -28,8 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import android.widget.Toast
-import com.r_erp.api.ApiService
-import com.r_erp.api.Client
+import com.r_erp.api.SupabaseService
+import com.r_erp.api.SupabaseClient
 import kotlinx.coroutines.launch
 
 @Composable
@@ -52,17 +52,22 @@ fun ClientDetailScreen(clientId: Int, onBack: () -> Unit) {
     LaunchedEffect(clientId) {
         if (clientId != -1) {
             try {
-                val apiService = ApiService.create()
-                val fetchedClient = apiService.getClient(id = clientId)
-
-                // Initialize states
-                fullname = fetchedClient.fullname
-                phone = fetchedClient.phone
-                email = fetchedClient.email ?: ""
-                address = fetchedClient.address ?: ""
-                city = fetchedClient.city ?: ""
-                state = fetchedClient.state ?: ""
-                cpf = fetchedClient.cpf ?: ""
+                val supabaseService = SupabaseService.create()
+                val fetchedClients = supabaseService.getClient(idFilter = "eq.$clientId")
+                
+                if (fetchedClients.isNotEmpty()) {
+                    val fetchedClient = fetchedClients[0]
+                    // Initialize states
+                    fullname = fetchedClient.fullName ?: ""
+                    phone = fetchedClient.phone ?: ""
+                    email = fetchedClient.email ?: ""
+                    address = fetchedClient.address ?: ""
+                    city = fetchedClient.city ?: ""
+                    state = fetchedClient.state ?: ""
+                    cpf = fetchedClient.cpf ?: ""
+                } else {
+                    errorMessage = "Cliente não encontrado"
+                }
 
                 isLoading = false
             } catch (e: Exception) {
@@ -156,10 +161,9 @@ fun ClientDetailScreen(clientId: Int, onBack: () -> Unit) {
                         isSaving = true
                         scope.launch {
                             try {
-                                val apiService = ApiService.create()
-                                val clientToUpdate = Client(
-                                    id = clientId,
-                                    fullname = fullname,
+                                val supabaseService = SupabaseService.create()
+                                val clientToSave = SupabaseClient(
+                                    fullName = fullname,
                                     phone = phone,
                                     email = email,
                                     address = address,
@@ -167,7 +171,16 @@ fun ClientDetailScreen(clientId: Int, onBack: () -> Unit) {
                                     state = state,
                                     cpf = cpf
                                 )
-                                apiService.updateClient(client = clientToUpdate)
+                                
+                                if (clientId == -1) {
+                                    supabaseService.createClient(client = clientToSave)
+                                } else {
+                                    supabaseService.updateClient(
+                                        idFilter = "eq.$clientId",
+                                        client = clientToSave
+                                    )
+                                }
+
                                 Toast.makeText(context, "Cliente salvo com sucesso!", Toast.LENGTH_SHORT).show()
                                 onBack()
                             } catch (e: Exception) {

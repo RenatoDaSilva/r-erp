@@ -79,7 +79,7 @@ fun ClientsScreen(onClientClick: (Int) -> Unit) {
                         .padding(16.dp)
                 ) {
                     items(clients) { client ->
-                        ClientItem(client, onClick = { onClientClick(client.id) })
+                        ClientItem(client, onClick = { onClientClick(client.id ?: 0) })
                     }
                 }
             }
