@@ -36,7 +36,25 @@ data class SupabaseProduct(
     @SerializedName("created_at") val createdAt: String? = null
 )
 
+data class SupabaseUnit(
+    val id: Int? = null,
+    val unit: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null
+)
+
+data class SupabaseType(
+    val id: Int? = null,
+    val type: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null
+)
+
 interface SupabaseService {
+
+    @GET("product_types")
+    suspend fun getProductTypes(): List<SupabaseType>
+
+    @GET("product_units")
+    suspend fun getProductUnits(): List<SupabaseUnit>
 
     @GET("products")
     suspend fun getProducts(): List<SupabaseProduct>

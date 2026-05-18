@@ -32,7 +32,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
-import com.r_erp.api.ApiService
 import com.r_erp.api.SupabaseService
 import com.r_erp.api.SupabaseProduct
 import kotlinx.coroutines.launch
@@ -67,13 +66,15 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
 
     LaunchedEffect(productId) {
         try {
-            val apiService = ApiService.create()
             val supabaseService = SupabaseService.create()
             
-            // Load lists
-            val lists = apiService.getLists()
-            typeOptions = lists.types
-            unitOptions = lists.units
+            // Load types from Supabase
+            val supabaseTypes = supabaseService.getProductTypes()
+            typeOptions = supabaseTypes.mapNotNull { it.type }
+            
+            // Load units from Supabase
+            val supabaseUnits = supabaseService.getProductUnits()
+            unitOptions = supabaseUnits.mapNotNull { it.unit }
 
             if (productId != -1) {
                 val fetchedProducts = supabaseService.getProduct(idFilter = "eq.$productId")
