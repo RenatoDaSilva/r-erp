@@ -128,6 +128,9 @@ interface SupabaseService {
         @Body supplier: SupabaseSupplier
     ): ResponseBody
 
+    @DELETE("suppliers")
+    suspend fun deleteSupplier(@Query("id") idFilter: String): ResponseBody
+
     @POST("clients")
     suspend fun createClient(@Body client: SupabaseClient): ResponseBody
 
