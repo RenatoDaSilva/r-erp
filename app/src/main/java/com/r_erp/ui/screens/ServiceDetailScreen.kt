@@ -54,12 +54,12 @@ fun ServiceDetailScreen(serviceId: Int, onBack: () -> Unit) {
                 if (fetchedServices.isNotEmpty()) {
                     val fetchedService = fetchedServices[0]
                     description = fetchedService.description ?: ""
-                    priceStr = (fetchedService.price ?: 0.0).toString()
+                    priceStr = String.format(Locale.US, "%.2f", fetchedService.price ?: 0.0)
                 } else {
                     errorMessage = "Serviço não encontrado"
                 }
             } else {
-                priceStr = "0.0"
+                priceStr = "0.00"
             }
             isLoading = false
         } catch (e: Exception) {

@@ -33,7 +33,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.SupabaseService
 import com.r_erp.api.SupabaseServiceItem
-import java.text.NumberFormat
 import java.util.Locale
 
 @Composable
@@ -136,9 +135,6 @@ fun ServicesScreen(onServiceClick: (Int) -> Unit) {
 
 @Composable
 fun ServiceItem(service: SupabaseServiceItem, onClick: () -> Unit) {
-    val localeBR = Locale("pt", "BR")
-    val currencyFormatter = NumberFormat.getCurrencyInstance(localeBR)
-    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -154,7 +150,7 @@ fun ServiceItem(service: SupabaseServiceItem, onClick: () -> Unit) {
             Text(text = service.description ?: "Sem descrição", style = MaterialTheme.typography.titleLarge)
             
             Text(
-                text = "Preço: ${currencyFormatter.format(service.price ?: 0.0)}",
+                text = "Preço: ${String.format(Locale.US, "%.2f", service.price ?: 0.0)}",
                 style = MaterialTheme.typography.bodyMedium
             )
         }

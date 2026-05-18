@@ -83,16 +83,16 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
                     description = fetchedProduct.description ?: ""
                     type = fetchedProduct.type ?: ""
                     unit = fetchedProduct.unit ?: ""
-                    priceStr = (fetchedProduct.price ?: 0.0).toString()
-                    stockStr = (fetchedProduct.stock ?: 0.0).toString()
-                    costStr = (fetchedProduct.cost ?: 0.0).toString()
+                    priceStr = String.format(Locale.US, "%.2f", fetchedProduct.price ?: 0.0)
+                    stockStr = String.format(Locale.US, "%.2f", fetchedProduct.stock ?: 0.0)
+                    costStr = String.format(Locale.US, "%.2f", fetchedProduct.cost ?: 0.0)
                 } else {
                     errorMessage = "Produto não encontrado"
                 }
             } else {
-                priceStr = "0.0"
-                stockStr = "0.0"
-                costStr = "0.0"
+                priceStr = "0.00"
+                stockStr = "0.00"
+                costStr = "0.00"
             }
             isLoading = false
         } catch (e: Exception) {

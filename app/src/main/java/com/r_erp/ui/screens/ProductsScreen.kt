@@ -34,7 +34,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.SupabaseService
 import com.r_erp.api.SupabaseProduct
-import java.text.NumberFormat
 import java.util.Locale
 
 @Composable
@@ -137,9 +136,6 @@ fun ProductsScreen(onProductClick: (Int) -> Unit) {
 
 @Composable
 fun ProductItem(product: SupabaseProduct, onClick: () -> Unit) {
-    val localeBR = Locale("pt", "BR")
-    val currencyFormatter = NumberFormat.getCurrencyInstance(localeBR)
-    
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -169,12 +165,12 @@ fun ProductItem(product: SupabaseProduct, onClick: () -> Unit) {
             
             Row(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "Preço: ${currencyFormatter.format(product.price ?: 0.0)}",
+                    text = "Preço: ${String.format(Locale.US, "%.2f", product.price ?: 0.0)}",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Estoque: ${String.format(localeBR, "%.2f", product.stock ?: 0.0)}",
+                    text = "Estoque: ${String.format(Locale.US, "%.2f", product.stock ?: 0.0)}",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f)
                 )
@@ -182,7 +178,7 @@ fun ProductItem(product: SupabaseProduct, onClick: () -> Unit) {
 
             product.cost?.let {
                 Text(
-                    text = "Custo: ${currencyFormatter.format(it)}",
+                    text = "Custo: ${String.format(Locale.US, "%.2f", it)}",
                     style = MaterialTheme.typography.bodyMedium
                 )
             }
