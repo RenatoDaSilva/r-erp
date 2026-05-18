@@ -8,6 +8,7 @@ import okhttp3.ResponseBody
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
@@ -135,6 +136,9 @@ interface SupabaseService {
         @Query("id") idFilter: String,
         @Body client: SupabaseClient
     ): ResponseBody
+
+    @DELETE("clients")
+    suspend fun deleteClient(@Query("id") idFilter: String): ResponseBody
 
     companion object {
         private const val BASE_URL = "https://euzmbicrbjpgcyrojvdm.supabase.co/rest/v1/"
