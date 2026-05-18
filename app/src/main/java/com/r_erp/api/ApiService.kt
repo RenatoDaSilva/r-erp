@@ -20,18 +20,6 @@ data class Client(
     val date: String? = null,
 )
 
-data class Supplier(
-    val id: Int,
-    val fullname: String,
-    val phone: String,
-    val email: String? = null,
-    val address: String? = null,
-    val city: String? = null,
-    val state: String? = null,
-    val cpf: String? = null, // Can be CNPJ
-    val date: String? = null,
-)
-
 data class AgendaItem(
     val title: String,
     val description: String? = null,
@@ -40,53 +28,10 @@ data class AgendaItem(
     val fullDay: Boolean = false,
 )
 
-data class Product(
-    val id: Int,
-    val description: String,
-    val type: String,
-    val unit: String,
-    val price: Double,
-    val stock: Double,
-    val cost: Double? = null
-)
-
-data class ListsResponse(
-    val types: List<String>,
-    val units: List<String>
-)
-
 interface ApiService {
     // Clients
     @GET("exec")
     suspend fun getClients(@Query("option") option: String = "clientes"): List<Client>
-
-    @GET("exec")
-    suspend fun getClient(
-        @Query("option") option: String = "cliente",
-        @Query("id") id: Int
-    ): Client
-
-    @POST("exec")
-    suspend fun updateClient(
-        @Query("option") option: String = "cliente",
-        @Body client: Client
-    ): ResponseBody
-
-    // Suppliers
-    @GET("exec")
-    suspend fun getSuppliers(@Query("option") option: String = "fornecedores"): List<Supplier>
-
-    @GET("exec")
-    suspend fun getSupplier(
-        @Query("option") option: String = "fornecedor",
-        @Query("id") id: Int
-    ): Supplier
-
-    @POST("exec")
-    suspend fun updateSupplier(
-        @Query("option") option: String = "fornecedor",
-        @Body supplier: Supplier
-    ): ResponseBody
 
     // Agenda
     @GET("exec")
@@ -100,26 +45,6 @@ interface ApiService {
         @Query("option") option: String = "agenda",
         @Body item: AgendaItem
     ): ResponseBody
-
-    // Products
-    @GET("exec")
-    suspend fun getProducts(@Query("option") option: String = "produtos"): List<Product>
-
-    @GET("exec")
-    suspend fun getProduct(
-        @Query("option") option: String = "produto",
-        @Query("id") id: Int
-    ): Product
-
-    @POST("exec")
-    suspend fun updateProduct(
-        @Query("option") option: String = "produto",
-        @Body product: Product
-    ): ResponseBody
-
-    // Lists
-    @GET("exec")
-    suspend fun getLists(@Query("option") option: String = "listas"): ListsResponse
 
     companion object {
         private const val BASE_URL = "https://script.google.com/macros/s/AKfycbyMfVdXPP28YqpxfgXSNlBjlnaSD-ltURq8A7TTLFlVIbhVGh43Y1qJtKV5lASf1t23/"
