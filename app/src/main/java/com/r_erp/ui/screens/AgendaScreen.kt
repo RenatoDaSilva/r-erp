@@ -38,9 +38,13 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.viewinterop.AndroidView
+import android.widget.TextView
+import androidx.core.text.HtmlCompat
 import com.r_erp.api.ApiService
 import com.r_erp.api.AgendaItem
 import java.text.SimpleDateFormat
@@ -210,9 +214,9 @@ fun AgendaItemCard(item: AgendaItem) {
             
             item.description?.let {
                 Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = it,
-                    style = MaterialTheme.typography.bodyLarge
+                HtmlText(
+                    html = it,
+                    modifier = Modifier.fillMaxWidth()
                 )
             }
             
@@ -254,6 +258,24 @@ fun AgendaItemCard(item: AgendaItem) {
             }
         }
     }
+}
+
+@Composable
+fun HtmlText(html: String, modifier: Modifier = Modifier) {
+    val textColor = MaterialTheme.colorScheme.onSurface.toArgb()
+    AndroidView(
+        modifier = modifier,
+        factory = { context ->
+            TextView(context).apply {
+                textSize = 16f // Approximately bodyLarge
+                setTextColor(textColor)
+            }
+        },
+        update = { textView ->
+            textView.text = HtmlCompat.fromHtml(html, HtmlCompat.FROM_HTML_MODE_LEGACY)
+            textView.setTextColor(textColor)
+        }
+    )
 }
 
 private fun formatTime(isoString: String?): String {
