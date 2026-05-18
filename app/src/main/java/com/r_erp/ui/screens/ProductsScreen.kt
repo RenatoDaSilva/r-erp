@@ -11,12 +11,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -36,8 +40,19 @@ import java.util.Locale
 @Composable
 fun ProductsScreen(onProductClick: (Int) -> Unit) {
     var products by remember { mutableStateOf<List<SupabaseProduct>>(emptyList()) }
+    var searchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(value = true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val filteredProducts = remember(searchQuery, products) {
+        if (searchQuery.isBlank()) {
+            products
+        } else {
+            products.filter {
+                it.description?.contains(searchQuery, ignoreCase = true) == true
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         try {
@@ -57,32 +72,62 @@ fun ProductsScreen(onProductClick: (Int) -> Unit) {
             }
         }
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (errorMessage != null) {
-                Text(
-                    text = errorMessage!!,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.align(Alignment.Center),
-                )
-            } else if (products.isEmpty()) {
-                Text(
-                    text = "Nenhum produto encontrado.",
-                    modifier = Modifier.align(Alignment.Center),
-                )
-            } else {
-                LazyColumn(
+            if (!isLoading && errorMessage == null && products.isNotEmpty()) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp)
-                ) {
-                    items(products) { product ->
-                        ProductItem(product, onClick = { onProductClick(product.id ?: 0) })
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    placeholder = { Text("Filtrar por descrição...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Limpar")
+                            }
+                        }
+                    },
+                    singleLine = true
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                } else if (errorMessage != null) {
+                    Text(
+                        text = errorMessage!!,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                } else if (products.isEmpty()) {
+                    Text(
+                        text = "Nenhum produto encontrado.",
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                } else if (filteredProducts.isEmpty()) {
+                    Text(
+                        text = "Nenhum produto corresponde ao filtro.",
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        items(filteredProducts) { product ->
+                            ProductItem(product, onClick = { onProductClick(product.id ?: 0) })
+                        }
                     }
                 }
             }
