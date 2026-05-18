@@ -27,19 +27,19 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.r_erp.api.ApiService
-import com.r_erp.api.Client
+import com.r_erp.api.SupabaseService
+import com.r_erp.api.SupabaseClient
 
 @Composable
 fun ClientsScreen(onClientClick: (Int) -> Unit) {
-    var clients by remember { mutableStateOf<List<Client>>(emptyList()) }
+    var clients by remember { mutableStateOf<List<SupabaseClient>>(emptyList()) }
     var isLoading by remember { mutableStateOf(value = true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         try {
-            val apiService = ApiService.create()
-            clients = apiService.getClients(option = "clientes")
+            val supabaseService = SupabaseService.create()
+            clients = supabaseService.getClients()
             isLoading = false
         } catch (e: Exception) {
             errorMessage = e.message ?: "Erro desconhecido"
@@ -88,7 +88,7 @@ fun ClientsScreen(onClientClick: (Int) -> Unit) {
 }
 
 @Composable
-fun ClientItem(client: Client, onClick: () -> Unit) {
+fun ClientItem(client: SupabaseClient, onClick: () -> Unit) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
@@ -100,9 +100,19 @@ fun ClientItem(client: Client, onClick: () -> Unit) {
             modifier = Modifier
                 .padding(16.dp)
         ) {
-            Text(text = client.id.toString(), style = MaterialTheme.typography.labelMedium)
-            Text(text = client.fullname, style = MaterialTheme.typography.titleLarge)
-            Text(text = client.phone, style = MaterialTheme.typography.bodyMedium)
+            Text(text = "ID: ${client.id}", style = MaterialTheme.typography.labelMedium)
+            Text(text = client.fullName ?: "Sem Nome", style = MaterialTheme.typography.titleLarge)
+            Text(text = "Tel: ${client.phone ?: "N/A"}", style = MaterialTheme.typography.bodyMedium)
+            client.email?.let {
+                Text(text = "E-mail: $it", style = MaterialTheme.typography.bodySmall)
+            }
+            if (!client.cpf.isNullOrBlank()) {
+                Text(text = "CPF: ${client.cpf}", style = MaterialTheme.typography.bodySmall)
+            }
+            if (!client.city.isNullOrBlank() || !client.state.isNullOrBlank()) {
+                val location = listOfNotNull(client.city, client.state).joinToString(", ")
+                Text(text = "Local: $location", style = MaterialTheme.typography.bodySmall)
+            }
         }
     }
 }
