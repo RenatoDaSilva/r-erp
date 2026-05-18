@@ -41,6 +41,18 @@ interface SupabaseService {
     @GET("products")
     suspend fun getProducts(): List<SupabaseProduct>
 
+    @GET("products")
+    suspend fun getProduct(@Query("id") idFilter: String): List<SupabaseProduct>
+
+    @POST("products")
+    suspend fun createProduct(@Body product: SupabaseProduct): ResponseBody
+
+    @PATCH("products")
+    suspend fun updateProduct(
+        @Query("id") idFilter: String,
+        @Body product: SupabaseProduct
+    ): ResponseBody
+
     @GET("clients")
     suspend fun getClients(): List<SupabaseClient>
 

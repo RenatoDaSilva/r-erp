@@ -33,7 +33,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.ApiService
-import com.r_erp.api.Product
+import com.r_erp.api.SupabaseService
+import com.r_erp.api.SupabaseProduct
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
@@ -51,11 +52,9 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
     var description by remember { mutableStateOf("") }
     var type by remember { mutableStateOf("") }
     var unit by remember { mutableStateOf("") }
-
-    // Read-only states
-    var price by remember { mutableStateOf(0.0) }
-    var stock by remember { mutableStateOf(0.0) }
-    var cost by remember { mutableStateOf(0.0) }
+    var priceStr by remember { mutableStateOf("") }
+    var stockStr by remember { mutableStateOf("") }
+    var costStr by remember { mutableStateOf("") }
 
     // Lists for ComboBoxes
     var typeOptions by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -69,6 +68,7 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
     LaunchedEffect(productId) {
         try {
             val apiService = ApiService.create()
+            val supabaseService = SupabaseService.create()
             
             // Load lists
             val lists = apiService.getLists()
@@ -76,13 +76,22 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
             unitOptions = lists.units
 
             if (productId != -1) {
-                val fetchedProduct = apiService.getProduct(id = productId)
-                description = fetchedProduct.description
-                type = fetchedProduct.type
-                unit = fetchedProduct.unit
-                price = fetchedProduct.price
-                stock = fetchedProduct.stock
-                cost = fetchedProduct.cost ?: 0.0
+                val fetchedProducts = supabaseService.getProduct(idFilter = "eq.$productId")
+                if (fetchedProducts.isNotEmpty()) {
+                    val fetchedProduct = fetchedProducts[0]
+                    description = fetchedProduct.description ?: ""
+                    type = fetchedProduct.type ?: ""
+                    unit = fetchedProduct.unit ?: ""
+                    priceStr = (fetchedProduct.price ?: 0.0).toString()
+                    stockStr = (fetchedProduct.stock ?: 0.0).toString()
+                    costStr = (fetchedProduct.cost ?: 0.0).toString()
+                } else {
+                    errorMessage = "Produto não encontrado"
+                }
+            } else {
+                priceStr = "0.0"
+                stockStr = "0.0"
+                costStr = "0.0"
             }
             isLoading = false
         } catch (e: Exception) {
@@ -197,29 +206,25 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
                     }
                 }
 
-                // Read-only fields
                 OutlinedTextField(
-                    value = currencyFormatter.format(price),
-                    onValueChange = {},
+                    value = priceStr,
+                    onValueChange = { priceStr = it },
                     label = { Text("Preço") },
-                    modifier = Modifier.fillMaxWidth(),
-                    readOnly = true
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 OutlinedTextField(
-                    value = currencyFormatter.format(cost),
-                    onValueChange = {},
+                    value = costStr,
+                    onValueChange = { costStr = it },
                     label = { Text("Custo") },
-                    modifier = Modifier.fillMaxWidth(),
-                    readOnly = true
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 OutlinedTextField(
-                    value = String.format(localeBR, "%.2f", stock),
-                    onValueChange = {},
+                    value = stockStr,
+                    onValueChange = { stockStr = it },
                     label = { Text("Estoque") },
-                    modifier = Modifier.fillMaxWidth(),
-                    readOnly = true
+                    modifier = Modifier.fillMaxWidth()
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -229,17 +234,25 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
                         isSaving = true
                         scope.launch {
                             try {
-                                val apiService = ApiService.create()
-                                val productToUpdate = Product(
-                                    id = productId,
+                                val supabaseService = SupabaseService.create()
+                                val productToSave = SupabaseProduct(
                                     description = description,
                                     type = type,
                                     unit = unit,
-                                    price = price,
-                                    stock = stock,
-                                    cost = cost
+                                    price = priceStr.toDoubleOrNull() ?: 0.0,
+                                    stock = stockStr.toDoubleOrNull() ?: 0.0,
+                                    cost = costStr.toDoubleOrNull() ?: 0.0
                                 )
-                                apiService.updateProduct(product = productToUpdate)
+                                
+                                if (productId == -1) {
+                                    supabaseService.createProduct(product = productToSave)
+                                } else {
+                                    supabaseService.updateProduct(
+                                        idFilter = "eq.$productId",
+                                        product = productToSave
+                                    )
+                                }
+
                                 Toast.makeText(context, "Produto salvo com sucesso!", Toast.LENGTH_SHORT).show()
                                 onBack()
                             } catch (e: Exception) {
