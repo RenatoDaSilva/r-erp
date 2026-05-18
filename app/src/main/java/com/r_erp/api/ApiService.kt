@@ -8,18 +8,6 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.Query
 
-data class Client(
-    val id: Int,
-    val fullname: String,
-    val phone: String,
-    val email: String? = null,
-    val address: String? = null,
-    val city: String? = null,
-    val state: String? = null,
-    val cpf: String? = null,
-    val date: String? = null,
-)
-
 data class AgendaItem(
     val title: String,
     val description: String? = null,
@@ -29,10 +17,6 @@ data class AgendaItem(
 )
 
 interface ApiService {
-    // Clients
-    @GET("exec")
-    suspend fun getClients(@Query("option") option: String = "clientes"): List<Client>
-
     // Agenda
     @GET("exec")
     suspend fun getAgenda(

@@ -45,8 +45,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.ApiService
+import com.r_erp.api.SupabaseService
 import com.r_erp.api.AgendaItem
-import com.r_erp.api.Client
+import com.r_erp.api.SupabaseClient
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -60,8 +61,9 @@ fun AddAgendaItemScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val apiService = remember { ApiService.create() }
+    val supabaseService = remember { SupabaseService.create() }
 
-    var clients by remember { mutableStateOf<List<Client>>(emptyList()) }
+    var clients by remember { mutableStateOf<List<SupabaseClient>>(emptyList()) }
     var isLoadingClients by remember { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
 
@@ -82,7 +84,7 @@ fun AddAgendaItemScreen(onBack: () -> Unit) {
 
     LaunchedEffect(Unit) {
         try {
-            clients = apiService.getClients()
+            clients = supabaseService.getClients()
             isLoadingClients = false
         } catch (e: Exception) {
             Toast.makeText(context, "Erro ao carregar clientes: ${e.message}", Toast.LENGTH_LONG).show()
@@ -124,9 +126,9 @@ fun AddAgendaItemScreen(onBack: () -> Unit) {
                 ) {
                     clients.forEach { client ->
                         DropdownMenuItem(
-                            text = { Text(client.fullname) },
+                            text = { Text(client.fullName ?: "") },
                             onClick = {
-                                selectedClientName = client.fullname
+                                selectedClientName = client.fullName ?: ""
                                 expanded = false
                             }
                         )
