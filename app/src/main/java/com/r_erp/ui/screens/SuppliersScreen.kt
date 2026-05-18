@@ -10,12 +10,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -33,8 +37,19 @@ import com.r_erp.api.SupabaseClient
 @Composable
 fun SuppliersScreen(onSupplierClick: (Int) -> Unit) {
     var suppliers by remember { mutableStateOf<List<SupabaseClient>>(emptyList()) }
+    var searchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(value = true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val filteredSuppliers = remember(searchQuery, suppliers) {
+        if (searchQuery.isBlank()) {
+            suppliers
+        } else {
+            suppliers.filter {
+                it.fullName?.contains(searchQuery, ignoreCase = true) == true
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         try {
@@ -54,32 +69,62 @@ fun SuppliersScreen(onSupplierClick: (Int) -> Unit) {
             }
         }
     ) { padding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (errorMessage != null) {
-                Text(
-                    text = errorMessage!!,
-                    color = MaterialTheme.colorScheme.error,
-                    modifier = Modifier.align(Alignment.Center),
-                )
-            } else if (suppliers.isEmpty()) {
-                Text(
-                    text = "Nenhum fornecedor encontrado.",
-                    modifier = Modifier.align(Alignment.Center),
-                )
-            } else {
-                LazyColumn(
+            if (!isLoading && errorMessage == null && suppliers.isNotEmpty()) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
                     modifier = Modifier
-                        .fillMaxSize()
-                        .padding(horizontal = 16.dp)
-                ) {
-                    items(suppliers) { supplier ->
-                        SupplierItem(supplier, onClick = { onSupplierClick(supplier.id ?: 0) })
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                    placeholder = { Text("Filtrar por nome...") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                    trailingIcon = {
+                        if (searchQuery.isNotEmpty()) {
+                            IconButton(onClick = { searchQuery = "" }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Limpar")
+                            }
+                        }
+                    },
+                    singleLine = true
+                )
+            }
+
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+            ) {
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                } else if (errorMessage != null) {
+                    Text(
+                        text = errorMessage!!,
+                        color = MaterialTheme.colorScheme.error,
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                } else if (suppliers.isEmpty()) {
+                    Text(
+                        text = "Nenhum fornecedor encontrado.",
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                } else if (filteredSuppliers.isEmpty()) {
+                    Text(
+                        text = "Nenhum fornecedor corresponde ao filtro.",
+                        modifier = Modifier.align(Alignment.Center),
+                    )
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(horizontal = 16.dp)
+                    ) {
+                        items(filteredSuppliers) { supplier ->
+                            SupplierItem(supplier, onClick = { onSupplierClick(supplier.id ?: 0) })
+                        }
                     }
                 }
             }
