@@ -25,7 +25,21 @@ data class SupabaseClient(
     @SerializedName("created_at") val createdAt: String? = null
 )
 
+data class SupabaseProduct(
+    val id: Int? = null,
+    val description: String? = null,
+    val type: String? = null,
+    val unit: String? = null,
+    val price: Double? = null,
+    val stock: Double? = null,
+    val cost: Double? = null,
+    @SerializedName("created_at") val createdAt: String? = null
+)
+
 interface SupabaseService {
+
+    @GET("products")
+    suspend fun getProducts(): List<SupabaseProduct>
 
     @GET("clients")
     suspend fun getClients(): List<SupabaseClient>

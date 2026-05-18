@@ -28,21 +28,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.r_erp.api.ApiService
-import com.r_erp.api.Product
+import com.r_erp.api.SupabaseService
+import com.r_erp.api.SupabaseProduct
 import java.text.NumberFormat
 import java.util.Locale
 
 @Composable
 fun ProductsScreen(onProductClick: (Int) -> Unit) {
-    var products by remember { mutableStateOf<List<Product>>(emptyList()) }
+    var products by remember { mutableStateOf<List<SupabaseProduct>>(emptyList()) }
     var isLoading by remember { mutableStateOf(value = true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(Unit) {
         try {
-            val apiService = ApiService.create()
-            products = apiService.getProducts()
+            val supabaseService = SupabaseService.create()
+            products = supabaseService.getProducts()
             isLoading = false
         } catch (e: Exception) {
             errorMessage = e.message ?: e.toString()
@@ -79,10 +79,10 @@ fun ProductsScreen(onProductClick: (Int) -> Unit) {
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(16.dp)
+                        .padding(horizontal = 16.dp)
                 ) {
                     items(products) { product ->
-                        ProductItem(product, onClick = { onProductClick(product.id) })
+                        ProductItem(product, onClick = { onProductClick(product.id ?: 0) })
                     }
                 }
             }
@@ -91,7 +91,7 @@ fun ProductsScreen(onProductClick: (Int) -> Unit) {
 }
 
 @Composable
-fun ProductItem(product: Product, onClick: () -> Unit) {
+fun ProductItem(product: SupabaseProduct, onClick: () -> Unit) {
     val localeBR = Locale("pt", "BR")
     val currencyFormatter = NumberFormat.getCurrencyInstance(localeBR)
     
@@ -106,17 +106,17 @@ fun ProductItem(product: Product, onClick: () -> Unit) {
             modifier = Modifier
                 .padding(16.dp)
         ) {
-            Text(text = product.id.toString(), style = MaterialTheme.typography.labelMedium)
-            Text(text = product.description, style = MaterialTheme.typography.titleLarge)
+            Text(text = "ID: ${product.id ?: "N/A"}", style = MaterialTheme.typography.labelMedium)
+            Text(text = product.description ?: "Sem descrição", style = MaterialTheme.typography.titleLarge)
             
             Row(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "Tipo: ${product.type}",
+                    text = "Tipo: ${product.type ?: "N/A"}",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Un.: ${product.unit}",
+                    text = "Un.: ${product.unit ?: "N/A"}",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f)
                 )
@@ -124,14 +124,21 @@ fun ProductItem(product: Product, onClick: () -> Unit) {
             
             Row(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "Preço: ${currencyFormatter.format(product.price)}",
+                    text = "Preço: ${currencyFormatter.format(product.price ?: 0.0)}",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f)
                 )
                 Text(
-                    text = "Estoque: ${String.format(localeBR, "%.2f", product.stock)}",
+                    text = "Estoque: ${String.format(localeBR, "%.2f", product.stock ?: 0.0)}",
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.weight(1f)
+                )
+            }
+
+            product.cost?.let {
+                Text(
+                    text = "Custo: ${currencyFormatter.format(it)}",
+                    style = MaterialTheme.typography.bodyMedium
                 )
             }
         }
