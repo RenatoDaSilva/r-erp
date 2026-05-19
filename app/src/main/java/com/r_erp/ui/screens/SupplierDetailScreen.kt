@@ -183,12 +183,14 @@ fun SupplierDetailScreen(supplierId: Int, onBack: () -> Unit) {
                                 )
                                 
                                 if (supplierId == -1) {
-                                    supabaseService.createSupplier(supplier = supplierToSave)
+                                    val response = supabaseService.createSupplier(supplier = supplierToSave)
+                                    if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                 } else {
-                                    supabaseService.updateSupplier(
+                                    val response = supabaseService.updateSupplier(
                                         idFilter = "eq.$supplierId",
                                         supplier = supplierToSave
                                     )
+                                    if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                 }
 
                                 Toast.makeText(context, "Fornecedor salvo com sucesso!", Toast.LENGTH_SHORT).show()

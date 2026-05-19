@@ -1,6 +1,7 @@
 package com.r_erp.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -47,7 +48,7 @@ import java.util.Locale
 import java.util.TimeZone
 
 @Composable
-fun BudgetsScreen(onAddBudget: () -> Unit) {
+fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
     var budgets by remember { mutableStateOf<List<SupabaseBudget>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(value = true) }
@@ -135,7 +136,7 @@ fun BudgetsScreen(onAddBudget: () -> Unit) {
                             .padding(horizontal = 16.dp)
                     ) {
                         items(filteredBudgets) { budget ->
-                            BudgetItem(budget)
+                            BudgetItem(budget, onClick = { onBudgetClick(budget.id ?: 0) })
                         }
                     }
                 }
@@ -145,7 +146,7 @@ fun BudgetsScreen(onAddBudget: () -> Unit) {
 }
 
 @Composable
-fun BudgetItem(budget: SupabaseBudget) {
+fun BudgetItem(budget: SupabaseBudget, onClick: () -> Unit) {
     val highlightColor = MaterialTheme.colorScheme.primary
     val cardBorder = if (budget.orderId == null) {
         BorderStroke(2.dp, highlightColor)
@@ -156,7 +157,8 @@ fun BudgetItem(budget: SupabaseBudget) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(vertical = 8.dp),
+            .padding(vertical = 8.dp)
+            .clickable { onClick() },
         elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
         border = cardBorder
     ) {

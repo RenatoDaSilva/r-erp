@@ -210,10 +210,19 @@ fun MainScreen() {
                     }
 
                     "Orçamentos" -> {
-                        if (isAddingBudget) {
-                            BudgetDetailsScreen(onBack = { isAddingBudget = false })
+                        if (isAddingBudget || selectedId != null) {
+                            BudgetDetailsScreen(
+                                budgetId = selectedId,
+                                onBack = { 
+                                    isAddingBudget = false
+                                    selectedId = null
+                                }
+                            )
                         } else {
-                            BudgetsScreen(onAddBudget = { isAddingBudget = true })
+                            BudgetsScreen(
+                                onAddBudget = { isAddingBudget = true },
+                                onBudgetClick = { id -> selectedId = id }
+                            )
                         }
                     }
 

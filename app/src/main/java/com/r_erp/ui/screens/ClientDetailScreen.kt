@@ -173,12 +173,14 @@ fun ClientDetailScreen(clientId: Int, onBack: () -> Unit) {
                                 )
                                 
                                 if (clientId == -1) {
-                                    supabaseService.createClient(client = clientToSave)
+                                    val response = supabaseService.createClient(client = clientToSave)
+                                    if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                 } else {
-                                    supabaseService.updateClient(
+                                    val response = supabaseService.updateClient(
                                         idFilter = "eq.$clientId",
                                         client = clientToSave
                                     )
+                                    if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                 }
 
                                 Toast.makeText(context, "Cliente salvo com sucesso!", Toast.LENGTH_SHORT).show()

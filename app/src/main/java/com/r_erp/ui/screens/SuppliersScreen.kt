@@ -149,7 +149,8 @@ fun SuppliersScreen(onSupplierClick: (Int) -> Unit) {
                                 onDelete = {
                                     scope.launch {
                                         try {
-                                            supabaseService.deleteSupplier(idFilter = "eq.${supplier.id}")
+                                            val response = supabaseService.deleteSupplier(idFilter = "eq.${supplier.id}")
+                                            if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                             Toast.makeText(context, "Fornecedor excluído", Toast.LENGTH_SHORT).show()
                                             loadSuppliers()
                                         } catch (e: Exception) {

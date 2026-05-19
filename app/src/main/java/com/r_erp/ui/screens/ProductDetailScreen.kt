@@ -246,12 +246,14 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
                                 )
                                 
                                 if (productId == -1) {
-                                    supabaseService.createProduct(product = productToSave)
+                                    val response = supabaseService.createProduct(product = productToSave)
+                                    if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                 } else {
-                                    supabaseService.updateProduct(
+                                    val response = supabaseService.updateProduct(
                                         idFilter = "eq.$productId",
                                         product = productToSave
                                     )
+                                    if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                 }
 
                                 Toast.makeText(context, "Produto salvo com sucesso!", Toast.LENGTH_SHORT).show()

@@ -134,12 +134,14 @@ fun ServiceDetailScreen(serviceId: Int, onBack: () -> Unit) {
                                 )
                                 
                                 if (serviceId == -1) {
-                                    supabaseService.createService(service = serviceToSave)
+                                    val response = supabaseService.createService(service = serviceToSave)
+                                    if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                 } else {
-                                    supabaseService.updateService(
+                                    val response = supabaseService.updateService(
                                         idFilter = "eq.$serviceId",
                                         service = serviceToSave
                                     )
+                                    if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                 }
                                 
                                 Toast.makeText(context, "Serviço salvo com sucesso!", Toast.LENGTH_SHORT).show()

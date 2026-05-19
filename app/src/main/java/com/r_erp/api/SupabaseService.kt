@@ -5,7 +5,7 @@ import com.google.gson.GsonBuilder
 import com.google.gson.annotations.SerializedName
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
-import okhttp3.ResponseBody
+import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.http.Body
@@ -121,11 +121,23 @@ interface SupabaseService {
     @GET("budgets_with_items")
     suspend fun getBudgetsWithItems(): List<SupabaseBudget>
 
+    @GET("budgets_with_items")
+    suspend fun getBudgetWithItems(@Query("id") idFilter: String): List<SupabaseBudget>
+
     @POST("budgets")
-    suspend fun createBudget(@Body budget: SupabaseBudgetRequest): ResponseBody
+    suspend fun createBudget(@Body budget: SupabaseBudgetRequest): Response<Unit>
+
+    @PATCH("budgets")
+    suspend fun updateBudget(
+        @Query("id") idFilter: String,
+        @Body budget: SupabaseBudgetRequest
+    ): Response<Unit>
 
     @POST("budget_items")
-    suspend fun createBudgetItems(@Body items: List<SupabaseBudgetItemRequest>): ResponseBody
+    suspend fun createBudgetItems(@Body items: List<SupabaseBudgetItemRequest>): Response<Unit>
+
+    @DELETE("budget_items")
+    suspend fun deleteBudgetItems(@Query("budget_id") budgetIdFilter: String): Response<Unit>
 
     @GET("services")
     suspend fun getServices(): List<SupabaseServiceItem>
@@ -134,13 +146,13 @@ interface SupabaseService {
     suspend fun getService(@Query("id") idFilter: String): List<SupabaseServiceItem>
 
     @POST("services")
-    suspend fun createService(@Body service: SupabaseServiceItem): ResponseBody
+    suspend fun createService(@Body service: SupabaseServiceItem): Response<Unit>
 
     @PATCH("services")
     suspend fun updateService(
         @Query("id") idFilter: String,
         @Body service: SupabaseServiceItem
-    ): ResponseBody
+    ): Response<Unit>
 
     @GET("product_types")
     suspend fun getProductTypes(): List<SupabaseType>
@@ -155,13 +167,13 @@ interface SupabaseService {
     suspend fun getProduct(@Query("id") idFilter: String): List<SupabaseProduct>
 
     @POST("products")
-    suspend fun createProduct(@Body product: SupabaseProduct): ResponseBody
+    suspend fun createProduct(@Body product: SupabaseProduct): Response<Unit>
 
     @PATCH("products")
     suspend fun updateProduct(
         @Query("id") idFilter: String,
         @Body product: SupabaseProduct
-    ): ResponseBody
+    ): Response<Unit>
 
     @GET("clients")
     suspend fun getClients(): List<SupabaseClient>
@@ -176,28 +188,28 @@ interface SupabaseService {
     suspend fun getSupplier(@Query("id") idFilter: String): List<SupabaseSupplier>
 
     @POST("suppliers")
-    suspend fun createSupplier(@Body supplier: SupabaseSupplier): ResponseBody
+    suspend fun createSupplier(@Body supplier: SupabaseSupplier): Response<Unit>
 
     @PATCH("suppliers")
     suspend fun updateSupplier(
         @Query("id") idFilter: String,
         @Body supplier: SupabaseSupplier
-    ): ResponseBody
+    ): Response<Unit>
 
     @DELETE("suppliers")
-    suspend fun deleteSupplier(@Query("id") idFilter: String): ResponseBody
+    suspend fun deleteSupplier(@Query("id") idFilter: String): Response<Unit>
 
     @POST("clients")
-    suspend fun createClient(@Body client: SupabaseClient): ResponseBody
+    suspend fun createClient(@Body client: SupabaseClient): Response<Unit>
 
     @PATCH("clients")
     suspend fun updateClient(
         @Query("id") idFilter: String,
         @Body client: SupabaseClient
-    ): ResponseBody
+    ): Response<Unit>
 
     @DELETE("clients")
-    suspend fun deleteClient(@Query("id") idFilter: String): ResponseBody
+    suspend fun deleteClient(@Query("id") idFilter: String): Response<Unit>
 
     @POST("rpc/get_sequence")
     suspend fun getSequence(@Body body: Map<String, String>): Int

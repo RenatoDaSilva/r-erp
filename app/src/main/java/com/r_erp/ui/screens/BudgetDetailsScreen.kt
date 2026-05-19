@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.DateRange
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
@@ -60,13 +61,13 @@ import java.util.TimeZone
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun BudgetDetailsScreen(onBack: () -> Unit) {
+fun BudgetDetailsScreen(budgetId: Int? = null, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val supabaseService = remember { SupabaseService.create() }
 
     var isLoading by remember { mutableStateOf(true) }
-    var nextId by remember { mutableStateOf<Int?>(null) }
+    var nextId by remember { mutableStateOf<Int?>(budgetId) }
     
     // Budget Header Data
     var selectedClient by remember { mutableStateOf<SupabaseClient?>(null) }
@@ -90,11 +91,43 @@ fun BudgetDetailsScreen(onBack: () -> Unit) {
 
     LaunchedEffect(Unit) {
         try {
-            // Get Next Sequence ID
-            nextId = supabaseService.getSequence(mapOf("sequence_name" to "budgets_id_seq"))
-            
-            // Load Clients
+            // Load Clients first
             clients = supabaseService.getClients()
+
+            if (budgetId == null) {
+                // Creation mode: Get Next Sequence ID
+                nextId = supabaseService.getSequence(mapOf("sequence_name" to "budgets_id_seq"))
+            } else {
+                // Edition mode: Fetch existing budget
+                val fetchedBudgets = supabaseService.getBudgetWithItems(idFilter = "eq.$budgetId")
+                if (fetchedBudgets.isNotEmpty()) {
+                    val b = fetchedBudgets[0]
+                    
+                    // Try to find the client by ID, or by Name if ID is missing from the view
+                    selectedClient = clients.find { it.id == b.clientId } 
+                        ?: clients.find { it.fullName == b.clientName }
+                    
+                    // Parse validUntil
+                    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                    b.validUntil?.let {
+                        try {
+                            validUntilMillis = sdf.parse(it.take(10))?.time ?: validUntilMillis
+                        } catch (e: Exception) {
+                            Log.e("BudgetDetails", "Error parsing date: $it", e)
+                        }
+                    }
+                    
+                    discount = String.format(Locale.US, "%.2f", b.discount ?: 0.0)
+                    message = b.message ?: ""
+                    
+                    // Load items
+                    budgetItems.clear()
+                    b.items?.let { budgetItems.addAll(it) }
+                } else {
+                    Toast.makeText(context, "Orçamento não encontrado", Toast.LENGTH_SHORT).show()
+                    onBack()
+                }
+            }
             
             isLoading = false
         } catch (e: Exception) {
@@ -132,7 +165,8 @@ fun BudgetDetailsScreen(onBack: () -> Unit) {
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Text(text = "Novo Orçamento ID: ${nextId ?: "..."}", style = MaterialTheme.typography.headlineSmall)
+                val title = if (budgetId == null) "Novo Orçamento" else "Editar Orçamento"
+                Text(text = "$title ID: ${nextId ?: "..."}", style = MaterialTheme.typography.headlineSmall)
 
                 // Client Selection
                 ExposedDropdownMenuBox(
@@ -211,13 +245,20 @@ fun BudgetDetailsScreen(onBack: () -> Unit) {
                 // Summary of items
                 budgetItems.forEachIndexed { index, item ->
                     Column(modifier = Modifier.fillMaxWidth()) {
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(text = item.description ?: "", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
-                            Text(text = "x${String.format(Locale.US, "%.2f", item.quantity ?: 0.0)}")
-                        }
-                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                            Text(text = "Preço: ${String.format(Locale.US, "%.2f", item.price ?: 0.0)}", style = MaterialTheme.typography.bodySmall)
-                            Text(text = "Total: ${String.format(Locale.US, "%.2f", item.total ?: 0.0)}", fontWeight = FontWeight.Bold)
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Column(modifier = Modifier.weight(1f)) {
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text(text = item.description ?: "", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                                    Text(text = "x${String.format(Locale.US, "%.2f", item.quantity ?: 0.0)}")
+                                }
+                                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                    Text(text = "Preço: ${String.format(Locale.US, "%.2f", item.price ?: 0.0)}", style = MaterialTheme.typography.bodySmall)
+                                    Text(text = "Total: ${String.format(Locale.US, "%.2f", item.total ?: 0.0)}", fontWeight = FontWeight.Bold)
+                                }
+                            }
+                            IconButton(onClick = { budgetItems.removeAt(index) }) {
+                                Icon(Icons.Default.Delete, contentDescription = "Remover item", tint = MaterialTheme.colorScheme.error)
+                            }
                         }
                         if (index < budgetItems.size - 1) HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
                     }
@@ -248,10 +289,21 @@ fun BudgetDetailsScreen(onBack: () -> Unit) {
                                         message = message
                                     )
 
-                                    // 1. Save Budget Header
-                                    supabaseService.createBudget(budgetRequest)
+                                    if (budgetId == null) {
+                                        // 1. Save Budget Header (New)
+                                        val response = supabaseService.createBudget(budgetRequest)
+                                        if (!response.isSuccessful) throw retrofit2.HttpException(response)
+                                    } else {
+                                        // 1. Update Budget Header (Existing)
+                                        val response = supabaseService.updateBudget(idFilter = "eq.$budgetId", budget = budgetRequest)
+                                        if (!response.isSuccessful) throw retrofit2.HttpException(response)
+                                        
+                                        // 2. Clear old items
+                                        val delResponse = supabaseService.deleteBudgetItems(budgetIdFilter = "eq.$budgetId")
+                                        if (!delResponse.isSuccessful) throw retrofit2.HttpException(delResponse)
+                                    }
 
-                                    // 2. Prepare and Save Items
+                                    // 3. Prepare and Save Items
                                     val itemsRequest = budgetItems.map { 
                                         SupabaseBudgetItemRequest(
                                             budgetId = nextId,
@@ -262,7 +314,10 @@ fun BudgetDetailsScreen(onBack: () -> Unit) {
                                             discount = it.discount
                                         )
                                     }
-                                    supabaseService.createBudgetItems(itemsRequest)
+                                    if (itemsRequest.isNotEmpty()) {
+                                        val itemsResponse = supabaseService.createBudgetItems(itemsRequest)
+                                        if (!itemsResponse.isSuccessful) throw retrofit2.HttpException(itemsResponse)
+                                    }
 
                                     Toast.makeText(context, "Orçamento salvo com sucesso!", Toast.LENGTH_SHORT).show()
                                     onBack()

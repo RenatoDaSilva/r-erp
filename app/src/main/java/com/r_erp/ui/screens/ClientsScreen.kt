@@ -149,7 +149,8 @@ fun ClientsScreen(onClientClick: (Int) -> Unit) {
                                 onDelete = {
                                     scope.launch {
                                         try {
-                                            supabaseService.deleteClient(idFilter = "eq.${client.id}")
+                                            val response = supabaseService.deleteClient(idFilter = "eq.${client.id}")
+                                            if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                             Toast.makeText(context, "Cliente excluído", Toast.LENGTH_SHORT).show()
                                             loadClients()
                                         } catch (e: Exception) {
