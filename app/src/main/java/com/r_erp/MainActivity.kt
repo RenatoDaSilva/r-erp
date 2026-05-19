@@ -55,6 +55,7 @@ import com.r_erp.ui.screens.ProductDetailScreen
 import com.r_erp.ui.screens.ServicesScreen
 import com.r_erp.ui.screens.ServiceDetailScreen
 import com.r_erp.ui.screens.BudgetsScreen
+import com.r_erp.ui.screens.BudgetDetailsScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -92,6 +93,7 @@ fun MainScreen() {
     var selectedItemIndex by rememberSaveable { mutableIntStateOf(0) }
     var selectedId by rememberSaveable { mutableStateOf<Int?>(null) }
     var isAddingAgendaItem by rememberSaveable { mutableStateOf(false) }
+    var isAddingBudget by rememberSaveable { mutableStateOf(false) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -106,6 +108,7 @@ fun MainScreen() {
                             selectedItemIndex = index
                             selectedId = null
                             isAddingAgendaItem = false
+                            isAddingBudget = false
                             scope.launch {
                                 drawerState.close()
                             }
@@ -128,6 +131,7 @@ fun MainScreen() {
                     title = {
                         val title = when {
                             isAddingAgendaItem -> "Novo Agendamento"
+                            isAddingBudget -> "Novo Orçamento"
                             selectedId != null && items[selectedItemIndex].title == "Clientes" -> "Dados do Cliente"
                             selectedId != null && items[selectedItemIndex].title == "Fornecedores" -> "Dados do Fornecedor"
                             selectedId != null && items[selectedItemIndex].title == "Produtos" -> "Dados do Produto"
@@ -206,7 +210,11 @@ fun MainScreen() {
                     }
 
                     "Orçamentos" -> {
-                        BudgetsScreen()
+                        if (isAddingBudget) {
+                            BudgetDetailsScreen(onBack = { isAddingBudget = false })
+                        } else {
+                            BudgetsScreen(onAddBudget = { isAddingBudget = true })
+                        }
                     }
 
                     else -> {

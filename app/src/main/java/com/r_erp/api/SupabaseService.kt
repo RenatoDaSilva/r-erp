@@ -1,6 +1,7 @@
 package com.r_erp.api
 
 import com.r_erp.BuildConfig
+import com.google.gson.GsonBuilder
 import com.google.gson.annotations.SerializedName
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
@@ -70,6 +71,10 @@ data class SupabaseServiceItem(
 )
 
 data class SupabaseBudgetItem(
+    val id: Int? = null,
+    @SerializedName("budget_id") val budgetId: Int? = null,
+    @SerializedName("product_id") val productId: Int? = null,
+    @SerializedName("service_id") val serviceId: Int? = null,
     val description: String? = null,
     val quantity: Double? = null,
     val price: Double? = null,
@@ -77,9 +82,20 @@ data class SupabaseBudgetItem(
     val total: Double? = null
 )
 
+// Specific DTO for inserting items
+data class SupabaseBudgetItemRequest(
+    @SerializedName("budget_id") val budgetId: Int?,
+    @SerializedName("product_id") val productId: Int?,
+    @SerializedName("service_id") val serviceId: Int?,
+    val quantity: Double?,
+    val price: Double?,
+    val discount: Double?
+)
+
 data class SupabaseBudget(
     val id: Int? = null,
     @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("client_id") val clientId: Int? = null,
     @SerializedName("client_name") val clientName: String? = null,
     @SerializedName("valid_until") val validUntil: String? = null,
     @SerializedName("total_items") val totalItems: Double? = null,
@@ -91,10 +107,25 @@ data class SupabaseBudget(
     val items: List<SupabaseBudgetItem>? = null
 )
 
+// Specific DTO for inserting budgets
+data class SupabaseBudgetRequest(
+    val id: Int?,
+    @SerializedName("client_id") val clientId: Int?,
+    @SerializedName("valid_until") val validUntil: String?,
+    val discount: Double?,
+    val message: String?
+)
+
 interface SupabaseService {
 
     @GET("budgets_with_items")
     suspend fun getBudgetsWithItems(): List<SupabaseBudget>
+
+    @POST("budgets")
+    suspend fun createBudget(@Body budget: SupabaseBudgetRequest): ResponseBody
+
+    @POST("budget_items")
+    suspend fun createBudgetItems(@Body items: List<SupabaseBudgetItemRequest>): ResponseBody
 
     @GET("services")
     suspend fun getServices(): List<SupabaseServiceItem>
@@ -168,6 +199,9 @@ interface SupabaseService {
     @DELETE("clients")
     suspend fun deleteClient(@Query("id") idFilter: String): ResponseBody
 
+    @POST("rpc/get_sequence")
+    suspend fun getSequence(@Body body: Map<String, String>): Int
+
     companion object {
         private const val BASE_URL = "https://euzmbicrbjpgcyrojvdm.supabase.co/rest/v1/"
         private const val API_KEY = BuildConfig.SUPABASE_KEY
@@ -186,10 +220,14 @@ interface SupabaseService {
                 .addInterceptor(authInterceptor)
                 .build()
 
+            val gson = GsonBuilder()
+                .serializeNulls()
+                .create()
+
             val retrofit = Retrofit.Builder()
                 .baseUrl(BASE_URL)
                 .client(client)
-                .addConverterFactory(GsonConverterFactory.create())
+                .addConverterFactory(GsonConverterFactory.create(gson))
                 .build()
 
             return retrofit.create(SupabaseService::class.java)
