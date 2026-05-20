@@ -51,6 +51,9 @@ import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
 
+import androidx.compose.ui.platform.LocalContext
+import com.r_erp.utils.PdfUtils
+
 @Composable
 fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
     var budgets by remember { mutableStateOf<List<SupabaseBudget>>(emptyList()) }
@@ -152,6 +155,7 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BudgetItem(budget: SupabaseBudget, onClick: () -> Unit) {
+    val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
     val highlightColor = MaterialTheme.colorScheme.primary
     val cardBorder = if (budget.orderId == null) {
@@ -278,7 +282,7 @@ fun BudgetItem(budget: SupabaseBudget, onClick: () -> Unit) {
                 text = { Text("Gerar PDF ...") },
                 onClick = {
                     showMenu = false
-                    // Action to be applied later
+                    PdfUtils.generateAndShareBudgetPdf(context, budget)
                 }
             )
             DropdownMenuItem(
