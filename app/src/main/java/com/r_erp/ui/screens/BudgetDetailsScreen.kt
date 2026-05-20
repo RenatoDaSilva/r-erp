@@ -51,7 +51,6 @@ import androidx.compose.ui.unit.dp
 import com.r_erp.api.SupabaseClient
 import com.r_erp.api.SupabaseService
 import com.r_erp.api.SupabaseBudgetItem
-import com.r_erp.api.SupabaseBudgetRequest
 import com.r_erp.api.SupabaseBudgetItemRequest
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -281,21 +280,20 @@ fun BudgetDetailsScreen(budgetId: Int? = null, onBack: () -> Unit) {
                             scope.launch {
                                 try {
                                     val apiDateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-                                    val budgetRequest = SupabaseBudgetRequest(
-                                        id = nextId,
-                                        clientId = selectedClient!!.id,
-                                        validUntil = apiDateFormat.format(Date(validUntilMillis)),
-                                        discount = discount.toDoubleOrNull() ?: 0.0,
-                                        message = message
-                                    )
+                                    val budgetMap = mutableMapOf<String, Any>()
+                                    budgetMap["id"] = nextId!!
+                                    budgetMap["client_id"] = selectedClient!!.id!!
+                                    budgetMap["valid_until"] = apiDateFormat.format(Date(validUntilMillis))
+                                    budgetMap["discount"] = discount.toDoubleOrNull() ?: 0.0
+                                    if (message.isNotBlank()) budgetMap["message"] = message
 
                                     if (budgetId == null) {
                                         // 1. Save Budget Header (New)
-                                        val response = supabaseService.createBudget(budgetRequest)
+                                        val response = supabaseService.createBudget(budgetMap)
                                         if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                     } else {
                                         // 1. Update Budget Header (Existing)
-                                        val response = supabaseService.updateBudget(idFilter = "eq.$budgetId", budget = budgetRequest)
+                                        val response = supabaseService.updateBudget(idFilter = "eq.$budgetId", budget = budgetMap)
                                         if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                         
                                         // 2. Clear old items

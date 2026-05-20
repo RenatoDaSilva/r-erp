@@ -29,7 +29,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import android.widget.Toast
 import com.r_erp.api.SupabaseService
-import com.r_erp.api.SupabaseClient
 import kotlinx.coroutines.launch
 
 @Composable
@@ -162,23 +161,23 @@ fun ClientDetailScreen(clientId: Int, onBack: () -> Unit) {
                         scope.launch {
                             try {
                                 val supabaseService = SupabaseService.create()
-                                val clientToSave = SupabaseClient(
-                                    fullName = fullname,
-                                    phone = phone,
-                                    email = email,
-                                    address = address,
-                                    city = city,
-                                    state = state,
-                                    cpf = cpf
-                                )
+                                
+                                val clientMap = mutableMapOf<String, Any>()
+                                if (fullname.isNotBlank()) clientMap["fullname"] = fullname
+                                if (phone.isNotBlank()) clientMap["phone"] = phone
+                                if (email.isNotBlank()) clientMap["email"] = email
+                                if (address.isNotBlank()) clientMap["address"] = address
+                                if (city.isNotBlank()) clientMap["city"] = city
+                                if (state.isNotBlank()) clientMap["state"] = state
+                                if (cpf.isNotBlank()) clientMap["cpf"] = cpf
                                 
                                 if (clientId == -1) {
-                                    val response = supabaseService.createClient(client = clientToSave)
+                                    val response = supabaseService.createClient(client = clientMap)
                                     if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                 } else {
                                     val response = supabaseService.updateClient(
                                         idFilter = "eq.$clientId",
-                                        client = clientToSave
+                                        client = clientMap
                                     )
                                     if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                 }

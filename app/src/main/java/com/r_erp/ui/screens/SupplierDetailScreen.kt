@@ -29,7 +29,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import android.widget.Toast
 import com.r_erp.api.SupabaseService
-import com.r_erp.api.SupabaseSupplier
 import kotlinx.coroutines.launch
 
 @Composable
@@ -171,24 +170,24 @@ fun SupplierDetailScreen(supplierId: Int, onBack: () -> Unit) {
                         scope.launch {
                             try {
                                 val supabaseService = SupabaseService.create()
-                                val supplierToSave = SupabaseSupplier(
-                                    fullName = fullname,
-                                    phone = phone,
-                                    email = email,
-                                    address = address,
-                                    city = city,
-                                    state = state,
-                                    cpfCnpj = cpfCnpj,
-                                    pix = pix
-                                )
+                                
+                                val supplierMap = mutableMapOf<String, Any>()
+                                if (fullname.isNotBlank()) supplierMap["fullname"] = fullname
+                                if (phone.isNotBlank()) supplierMap["phone"] = phone
+                                if (email.isNotBlank()) supplierMap["email"] = email
+                                if (address.isNotBlank()) supplierMap["address"] = address
+                                if (city.isNotBlank()) supplierMap["city"] = city
+                                if (state.isNotBlank()) supplierMap["state"] = state
+                                if (cpfCnpj.isNotBlank()) supplierMap["cpfcnpj"] = cpfCnpj
+                                if (pix.isNotBlank()) supplierMap["pix"] = pix
                                 
                                 if (supplierId == -1) {
-                                    val response = supabaseService.createSupplier(supplier = supplierToSave)
+                                    val response = supabaseService.createSupplier(supplier = supplierMap)
                                     if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                 } else {
                                     val response = supabaseService.updateSupplier(
                                         idFilter = "eq.$supplierId",
-                                        supplier = supplierToSave
+                                        supplier = supplierMap
                                     )
                                     if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                 }

@@ -29,7 +29,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.SupabaseService
-import com.r_erp.api.SupabaseServiceItem
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -128,18 +127,19 @@ fun ServiceDetailScreen(serviceId: Int, onBack: () -> Unit) {
                         scope.launch {
                             try {
                                 val supabaseService = SupabaseService.create()
-                                val serviceToSave = SupabaseServiceItem(
-                                    description = description,
-                                    price = priceStr.toDoubleOrNull() ?: 0.0
-                                )
+                                
+                                val serviceMap = mutableMapOf<String, Any>()
+                                if (description.isNotBlank()) serviceMap["description"] = description
+                                val p = priceStr.toDoubleOrNull() ?: 0.0
+                                serviceMap["price"] = p
                                 
                                 if (serviceId == -1) {
-                                    val response = supabaseService.createService(service = serviceToSave)
+                                    val response = supabaseService.createService(service = serviceMap)
                                     if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                 } else {
                                     val response = supabaseService.updateService(
                                         idFilter = "eq.$serviceId",
-                                        service = serviceToSave
+                                        service = serviceMap
                                     )
                                     if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                 }

@@ -33,7 +33,6 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.SupabaseService
-import com.r_erp.api.SupabaseProduct
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
@@ -236,22 +235,28 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
                         scope.launch {
                             try {
                                 val supabaseService = SupabaseService.create()
-                                val productToSave = SupabaseProduct(
-                                    description = description,
-                                    type = type,
-                                    unit = unit,
-                                    price = priceStr.toDoubleOrNull() ?: 0.0,
-                                    stock = stockStr.toDoubleOrNull() ?: 0.0,
-                                    cost = costStr.toDoubleOrNull() ?: 0.0
-                                )
+                                
+                                val productMap = mutableMapOf<String, Any>()
+                                if (description.isNotBlank()) productMap["description"] = description
+                                if (type.isNotBlank()) productMap["type"] = type
+                                if (unit.isNotBlank()) productMap["unit"] = unit
+                                
+                                val p = priceStr.toDoubleOrNull() ?: 0.0
+                                productMap["price"] = p
+                                
+                                val s = stockStr.toDoubleOrNull() ?: 0.0
+                                productMap["stock"] = s
+                                
+                                val c = costStr.toDoubleOrNull() ?: 0.0
+                                productMap["cost"] = c
                                 
                                 if (productId == -1) {
-                                    val response = supabaseService.createProduct(product = productToSave)
+                                    val response = supabaseService.createProduct(product = productMap)
                                     if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                 } else {
                                     val response = supabaseService.updateProduct(
                                         idFilter = "eq.$productId",
-                                        product = productToSave
+                                        product = productMap
                                     )
                                     if (!response.isSuccessful) throw retrofit2.HttpException(response)
                                 }

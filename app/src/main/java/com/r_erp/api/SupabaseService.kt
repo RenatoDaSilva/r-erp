@@ -107,15 +107,6 @@ data class SupabaseBudget(
     val items: List<SupabaseBudgetItem>? = null
 )
 
-// Specific DTO for inserting budgets
-data class SupabaseBudgetRequest(
-    val id: Int?,
-    @SerializedName("client_id") val clientId: Int?,
-    @SerializedName("valid_until") val validUntil: String?,
-    val discount: Double?,
-    val message: String?
-)
-
 interface SupabaseService {
 
     @GET("budgets_with_items")
@@ -125,12 +116,12 @@ interface SupabaseService {
     suspend fun getBudgetWithItems(@Query("id") idFilter: String): List<SupabaseBudget>
 
     @POST("budgets")
-    suspend fun createBudget(@Body budget: SupabaseBudgetRequest): Response<Unit>
+    suspend fun createBudget(@Body budget: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
 
     @PATCH("budgets")
     suspend fun updateBudget(
         @Query("id") idFilter: String,
-        @Body budget: SupabaseBudgetRequest
+        @Body budget: Map<String, @JvmSuppressWildcards Any>
     ): Response<Unit>
 
     @POST("budget_items")
@@ -146,12 +137,12 @@ interface SupabaseService {
     suspend fun getService(@Query("id") idFilter: String): List<SupabaseServiceItem>
 
     @POST("services")
-    suspend fun createService(@Body service: SupabaseServiceItem): Response<Unit>
+    suspend fun createService(@Body service: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
 
     @PATCH("services")
     suspend fun updateService(
         @Query("id") idFilter: String,
-        @Body service: SupabaseServiceItem
+        @Body service: Map<String, @JvmSuppressWildcards Any>
     ): Response<Unit>
 
     @GET("product_types")
@@ -167,12 +158,12 @@ interface SupabaseService {
     suspend fun getProduct(@Query("id") idFilter: String): List<SupabaseProduct>
 
     @POST("products")
-    suspend fun createProduct(@Body product: SupabaseProduct): Response<Unit>
+    suspend fun createProduct(@Body product: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
 
     @PATCH("products")
     suspend fun updateProduct(
         @Query("id") idFilter: String,
-        @Body product: SupabaseProduct
+        @Body product: Map<String, @JvmSuppressWildcards Any>
     ): Response<Unit>
 
     @GET("clients")
@@ -188,24 +179,24 @@ interface SupabaseService {
     suspend fun getSupplier(@Query("id") idFilter: String): List<SupabaseSupplier>
 
     @POST("suppliers")
-    suspend fun createSupplier(@Body supplier: SupabaseSupplier): Response<Unit>
+    suspend fun createSupplier(@Body supplier: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
 
     @PATCH("suppliers")
     suspend fun updateSupplier(
         @Query("id") idFilter: String,
-        @Body supplier: SupabaseSupplier
+        @Body supplier: Map<String, @JvmSuppressWildcards Any>
     ): Response<Unit>
 
     @DELETE("suppliers")
     suspend fun deleteSupplier(@Query("id") idFilter: String): Response<Unit>
 
     @POST("clients")
-    suspend fun createClient(@Body client: SupabaseClient): Response<Unit>
+    suspend fun createClient(@Body client: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
 
     @PATCH("clients")
     suspend fun updateClient(
         @Query("id") idFilter: String,
-        @Body client: SupabaseClient
+        @Body client: Map<String, @JvmSuppressWildcards Any>
     ): Response<Unit>
 
     @DELETE("clients")
