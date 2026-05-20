@@ -19,7 +19,7 @@ object PdfUtils {
 
     private val localeBR = Locale.forLanguageTag("pt-BR")
 
-    fun generateAndShareBudgetPdf(context: Context, budget: SupabaseBudget) {
+    fun generateAndShareBudgetPdf(context: Context, budget: SupabaseBudget, viaWhatsapp: Boolean = false) {
         val pdfDocument = PdfDocument()
         val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 Size
         val page = pdfDocument.startPage(pageInfo)
@@ -139,8 +139,74 @@ object PdfUtils {
         }
 
         // Share the PDF
-        shareFile(context, file)
+        if (viaWhatsapp) {
+            shareViaWhatsapp(context, file, budget.phone)
+        } else {
+            shareFile(context, file)
+        }
     }
+
+    private fun shareViaWhatsapp(context: Context, file: File, phone: String?) {
+        val uri: Uri = FileProvider.getUriForFile(context, "com.r_erp.fileprovider", file)
+        
+        // Format phone number: remove non-digits and leading zero
+        var digits = phone?.filter { it.isDigit() } ?: ""
+        if (digits.startsWith("0")) digits = digits.substring(1)
+        
+        val targetPhone = when (digits.length) {
+            10, 11 -> "55$digits"
+            else -> digits
+        }
+
+        val whatsappPackage = "com.whatsapp"
+        val whatsappBusinessPackage = "com.whatsapp.w4b"
+        
+        val isWhatsappInstalled = isPackageInstalled(whatsappPackage, context)
+        val isWhatsappBusinessInstalled = isPackageInstalled(whatsappBusinessPackage, context)
+
+        val intent = Intent(Intent.ACTION_SEND)
+        intent.type = "application/pdf"
+        intent.putExtra(Intent.EXTRA_STREAM, uri)
+        
+        val message = "Segue orçamento conforme solicitado"
+        // Try multiple ways to set the caption/legend
+        intent.putExtra(Intent.EXTRA_TEXT, message)
+        intent.putExtra("android.intent.extra.TEXT", message)
+        intent.putExtra("caption", message)
+        
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+
+        if (targetPhone.isNotEmpty()) {
+            val packageToUse = when {
+                isWhatsappBusinessInstalled -> whatsappBusinessPackage
+                isWhatsappInstalled -> whatsappPackage
+                else -> null
+            }
+            
+            if (packageToUse != null) {
+                intent.setPackage(packageToUse)
+                intent.putExtra("jid", "$targetPhone@s.whatsapp.net")
+                intent.putExtra("android.intent.extra.PHONE_NUMBER", targetPhone)
+            }
+        }
+
+        try {
+            // Remove Chooser if package is set to encourage direct opening
+            context.startActivity(intent)
+        } catch (e: Exception) {
+            context.startActivity(Intent.createChooser(intent, "Enviar Orçamento"))
+        }
+    }
+
+    private fun isPackageInstalled(packageName: String, context: Context): Boolean {
+        return try {
+            context.packageManager.getPackageInfo(packageName, 0)
+            true
+        } catch (e: Exception) {
+            false
+        }
+    }
+
 
     private fun shareFile(context: Context, file: File) {
         val uri: Uri = FileProvider.getUriForFile(context, "com.r_erp.fileprovider", file)

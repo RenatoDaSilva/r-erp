@@ -289,7 +289,7 @@ fun BudgetItem(budget: SupabaseBudget, onClick: () -> Unit) {
                 text = { Text("Enviar por Whatsapp ...") },
                 onClick = {
                     showMenu = false
-                    // Action to be applied later
+                    PdfUtils.generateAndShareBudgetPdf(context, budget, viaWhatsapp = true)
                 }
             )
             DropdownMenuItem(
