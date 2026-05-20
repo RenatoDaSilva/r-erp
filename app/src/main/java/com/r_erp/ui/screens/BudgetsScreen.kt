@@ -1,7 +1,9 @@
 package com.r_erp.ui.screens
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,6 +22,8 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -145,8 +149,10 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun BudgetItem(budget: SupabaseBudget, onClick: () -> Unit) {
+    var showMenu by remember { mutableStateOf(false) }
     val highlightColor = MaterialTheme.colorScheme.primary
     val cardBorder = if (budget.orderId == null) {
         BorderStroke(2.dp, highlightColor)
@@ -154,109 +160,141 @@ fun BudgetItem(budget: SupabaseBudget, onClick: () -> Unit) {
         null
     }
 
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-            .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
-        border = cardBorder
-    ) {
-        Column(
+    Box {
+        Card(
             modifier = Modifier
-                .padding(16.dp)
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = { showMenu = true }
+                ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
+            border = cardBorder
         ) {
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(
-                    text = formatDate(budget.createdAt),
-                    style = MaterialTheme.typography.labelMedium
-                )
-                if (budget.orderId != null) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+            ) {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                     Text(
-                        text = "Pedido: ${budget.orderId}",
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.secondary
+                        text = formatDate(budget.createdAt),
+                        style = MaterialTheme.typography.labelMedium
+                    )
+                    if (budget.orderId != null) {
+                        Text(
+                            text = "Pedido: ${budget.orderId}",
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.secondary
+                        )
+                    }
+                }
+                
+                Text(
+                    text = budget.clientName ?: "Cliente não informado",
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.Bold
+                )
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(
+                        text = "Validade: ${formatDate(budget.validUntil)}",
+                        style = MaterialTheme.typography.bodySmall
                     )
                 }
-            }
-            
-            Text(
-                text = budget.clientName ?: "Cliente não informado",
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
 
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(
-                    text = "Validade: ${formatDate(budget.validUntil)}",
-                    style = MaterialTheme.typography.bodySmall
-                )
-            }
+                Spacer(modifier = Modifier.height(8.dp))
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            // Items table
-            budget.items?.let { items ->
-                val displayItems = items.take(3)
-                
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    // Header
-                    Row(modifier = Modifier.fillMaxWidth()) {
-                        Text(text = "Desc.", modifier = Modifier.weight(3f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                        Text(text = "Qtd", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                        Text(text = "Preço", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                        Text(text = "Desc.", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                        Text(text = "Total", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
-                    }
-                    HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+                // Items table
+                budget.items?.let { items ->
+                    val displayItems = items.take(3)
                     
-                    displayItems.forEach { item ->
+                    Column(modifier = Modifier.fillMaxWidth()) {
+                        // Header
                         Row(modifier = Modifier.fillMaxWidth()) {
-                            Text(text = item.description ?: "", modifier = Modifier.weight(3f), fontSize = 10.sp, maxLines = 1)
-                            Text(text = formatDecimal(item.quantity), modifier = Modifier.weight(1f), fontSize = 10.sp)
-                            Text(text = formatDecimal(item.price), modifier = Modifier.weight(1.5f), fontSize = 10.sp)
-                            Text(text = formatDecimal(item.discount), modifier = Modifier.weight(1.5f), fontSize = 10.sp)
-                            Text(text = formatDecimal(item.total), modifier = Modifier.weight(1.5f), fontSize = 10.sp)
+                            Text(text = "Desc.", modifier = Modifier.weight(3f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                            Text(text = "Qtd", modifier = Modifier.weight(1f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                            Text(text = "Preço", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                            Text(text = "Desc.", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                            Text(text = "Total", modifier = Modifier.weight(1.5f), style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.Bold)
+                        }
+                        HorizontalDivider(modifier = Modifier.padding(vertical = 2.dp))
+                        
+                        displayItems.forEach { item ->
+                            Row(modifier = Modifier.fillMaxWidth()) {
+                                Text(text = item.description ?: "", modifier = Modifier.weight(3f), fontSize = 10.sp, maxLines = 1)
+                                Text(text = formatDecimal(item.quantity), modifier = Modifier.weight(1f), fontSize = 10.sp)
+                                Text(text = formatDecimal(item.price), modifier = Modifier.weight(1.5f), fontSize = 10.sp)
+                                Text(text = formatDecimal(item.discount), modifier = Modifier.weight(1.5f), fontSize = 10.sp)
+                                Text(text = formatDecimal(item.total), modifier = Modifier.weight(1.5f), fontSize = 10.sp)
+                            }
+                        }
+
+                        if (items.size > 3) {
+                            val remaining = (budget.itemsCount ?: items.size) - 3
+                            Text(
+                                text = "... mais $remaining itens",
+                                style = MaterialTheme.typography.bodySmall,
+                                modifier = Modifier.padding(top = 4.dp),
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
                     }
+                }
 
-                    if (items.size > 3) {
-                        val remaining = (budget.itemsCount ?: items.size) - 3
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Column {
+                        Text(text = "Total Itens: ${formatDecimal(budget.totalItems)}", style = MaterialTheme.typography.bodySmall)
+                        Text(text = "Desconto: ${formatDecimal(budget.discount)}", style = MaterialTheme.typography.bodySmall)
+                    }
+                    Text(
+                        text = "TOTAL: ${formatDecimal(budget.total)}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+
+                budget.message?.let {
+                    if (it.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(4.dp))
                         Text(
-                            text = "... mais $remaining itens",
+                            text = it,
                             style = MaterialTheme.typography.bodySmall,
-                            modifier = Modifier.padding(top = 4.dp),
-                            color = MaterialTheme.colorScheme.primary
+                            fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
                         )
                     }
                 }
             }
+        }
 
-            Spacer(modifier = Modifier.height(8.dp))
-
-            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Column {
-                    Text(text = "Total Itens: ${formatDecimal(budget.totalItems)}", style = MaterialTheme.typography.bodySmall)
-                    Text(text = "Desconto: ${formatDecimal(budget.discount)}", style = MaterialTheme.typography.bodySmall)
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false }
+        ) {
+            DropdownMenuItem(
+                text = { Text("Gerar PDF ...") },
+                onClick = {
+                    showMenu = false
+                    // Action to be applied later
                 }
-                Text(
-                    text = "TOTAL: ${formatDecimal(budget.total)}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            budget.message?.let {
-                if (it.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(4.dp))
-                    Text(
-                        text = it,
-                        style = MaterialTheme.typography.bodySmall,
-                        fontStyle = androidx.compose.ui.text.font.FontStyle.Italic
-                    )
+            )
+            DropdownMenuItem(
+                text = { Text("Enviar por Whatsapp ...") },
+                onClick = {
+                    showMenu = false
+                    // Action to be applied later
                 }
-            }
+            )
+            DropdownMenuItem(
+                text = { Text("Fechar pedido ...") },
+                onClick = {
+                    showMenu = false
+                    // Action to be applied later
+                }
+            )
         }
     }
 }
