@@ -69,7 +69,8 @@ fun ClientsScreen(onClientClick: (Int) -> Unit) {
         isLoading = true
         scope.launch {
             try {
-                clients = supabaseService.getClients()
+                val fetchedClients = supabaseService.getClients()
+                clients = fetchedClients.sortedBy { it.fullName?.lowercase() ?: "" }
                 isLoading = false
             } catch (e: Exception) {
                 errorMessage = e.message ?: "Erro desconhecido"

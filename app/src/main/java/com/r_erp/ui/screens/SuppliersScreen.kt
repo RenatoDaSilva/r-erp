@@ -69,7 +69,8 @@ fun SuppliersScreen(onSupplierClick: (Int) -> Unit) {
         isLoading = true
         scope.launch {
             try {
-                suppliers = supabaseService.getSuppliers()
+                val fetchedSuppliers = supabaseService.getSuppliers()
+                suppliers = fetchedSuppliers.sortedBy { it.fullName?.lowercase() ?: "" }
                 isLoading = false
             } catch (e: Exception) {
                 errorMessage = e.message ?: "Erro desconhecido"
