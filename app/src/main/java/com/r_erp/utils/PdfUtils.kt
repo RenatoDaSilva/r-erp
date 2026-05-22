@@ -9,6 +9,7 @@ import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import androidx.core.content.FileProvider
 import com.r_erp.api.SupabaseBudget
+import com.r_erp.api.SupabaseOrder
 import java.io.File
 import java.io.FileOutputStream
 import java.text.SimpleDateFormat
@@ -140,13 +141,13 @@ object PdfUtils {
 
         // Share the PDF
         if (viaWhatsapp) {
-            shareViaWhatsapp(context, file, budget.phone)
+            shareViaWhatsapp(context, file, budget.phone, isOrder = false)
         } else {
             shareFile(context, file)
         }
     }
 
-    private fun shareViaWhatsapp(context: Context, file: File, phone: String?) {
+    private fun shareViaWhatsapp(context: Context, file: File, phone: String?, isOrder: Boolean = false) {
         val uri: Uri = FileProvider.getUriForFile(context, "com.r_erp.fileprovider", file)
         
         // Format phone number: remove non-digits and leading zero
@@ -168,7 +169,8 @@ object PdfUtils {
         intent.type = "application/pdf"
         intent.putExtra(Intent.EXTRA_STREAM, uri)
         
-        val message = "Segue orçamento conforme solicitado"
+        val typeLabel = if (isOrder) "pedido" else "orçamento"
+        val message = "Segue $typeLabel conforme solicitado"
         // Try multiple ways to set the caption/legend
         intent.putExtra(Intent.EXTRA_TEXT, message)
         intent.putExtra("android.intent.extra.TEXT", message)
@@ -208,13 +210,133 @@ object PdfUtils {
     }
 
 
-    private fun shareFile(context: Context, file: File) {
+    private fun shareFile(context: Context, file: File, title: String = "Compartilhar Orçamento") {
         val uri: Uri = FileProvider.getUriForFile(context, "com.r_erp.fileprovider", file)
         val intent = Intent(Intent.ACTION_SEND)
         intent.type = "application/pdf"
         intent.putExtra(Intent.EXTRA_STREAM, uri)
         intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        context.startActivity(Intent.createChooser(intent, "Compartilhar Orçamento"))
+        context.startActivity(Intent.createChooser(intent, title))
+    }
+
+    fun generateAndShareOrderPdf(context: Context, order: SupabaseOrder, viaWhatsapp: Boolean = false) {
+        val pdfDocument = PdfDocument()
+        val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 Size
+        val page = pdfDocument.startPage(pageInfo)
+        val canvas: Canvas = page.canvas
+        val paint = Paint()
+        val titlePaint = Paint()
+        val boldPaint = Paint()
+
+        var y = 50f
+        val margin = 50f
+        val pageWidth = pageInfo.pageWidth.toFloat()
+
+        // Header: Center, double font size
+        titlePaint.textSize = 24f
+        titlePaint.textAlign = Paint.Align.CENTER
+        titlePaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        canvas.drawText("Pedido nº ${order.id}", pageWidth / 2, y, titlePaint)
+        y += 40f
+
+        // Client Info: Nome + fullname (bold, left)
+        paint.textSize = 12f
+        boldPaint.textSize = 12f
+        boldPaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        
+        canvas.drawText("Nome: ", margin, y, paint)
+        val nomeLabelWidth = paint.measureText("Nome: ")
+        canvas.drawText(order.clientName ?: "N/A", margin + nomeLabelWidth, y, boldPaint)
+        y += 20f
+
+        // Next line: phone (left) and "Local" (right)
+        val phone = order.phone ?: "N/A"
+        val city = order.city ?: ""
+        val state = order.state ?: ""
+        val local = if (city.isNotEmpty() || state.isNotEmpty()) "$city - $state" else "N/A"
+        canvas.drawText("Telefone: $phone", margin, y, paint)
+        
+        paint.textAlign = Paint.Align.RIGHT
+        canvas.drawText("Local: $local", pageWidth - margin, y, paint)
+        paint.textAlign = Paint.Align.LEFT // Reset for subsequent drawing
+        y += 40f // Give a row space
+
+        // Items Table Header
+        boldPaint.textSize = 10f
+        canvas.drawText("Qtd", margin, y, boldPaint)
+        canvas.drawText("Descrição", margin + 50f, y, boldPaint)
+        
+        boldPaint.textAlign = Paint.Align.RIGHT
+        canvas.drawText("Preço", margin + 370f, y, boldPaint)
+        canvas.drawText("Desc.", margin + 450f, y, boldPaint)
+        canvas.drawText("Total", pageWidth - margin, y, boldPaint)
+        boldPaint.textAlign = Paint.Align.LEFT // Reset
+        
+        y += 10f
+        canvas.drawLine(margin, y, pageWidth - margin, y, paint)
+        y += 20f
+
+        // Table Content
+        paint.textSize = 10f
+        order.items?.forEach { item ->
+            if (y > 750f) {
+                // In a real app we would start a new page here
+            }
+            canvas.drawText(String.format(localeBR, "%.2f", item.quantity ?: 0.0), margin, y, paint)
+            
+            val desc = item.description ?: ""
+            val truncatedDesc = if (desc.length > 40) desc.substring(0, 37) + "..." else desc
+            canvas.drawText(truncatedDesc, margin + 50f, y, paint)
+            
+            paint.textAlign = Paint.Align.RIGHT
+            canvas.drawText(String.format(localeBR, "%.2f", item.price ?: 0.0), margin + 370f, y, paint)
+            canvas.drawText(String.format(localeBR, "%.2f", item.discount ?: 0.0), margin + 450f, y, paint)
+            canvas.drawText(String.format(localeBR, "%.2f", item.total ?: 0.0), pageWidth - margin, y, paint)
+            paint.textAlign = Paint.Align.LEFT // Reset
+            y += 20f
+        }
+
+        y += 20f
+        canvas.drawLine(margin, y, pageWidth - margin, y, paint)
+        y += 20f
+
+        // Footer: Right aligned
+        paint.textAlign = Paint.Align.RIGHT
+        val rightMargin = pageWidth - margin
+        canvas.drawText("Total Itens: ${String.format(localeBR, "%.2f", order.totalItems ?: 0.0)}", rightMargin, y, paint)
+        y += 20f
+        canvas.drawText("Desconto: ${String.format(localeBR, "%.2f", order.discount ?: 0.0)}", rightMargin, y, paint)
+        y += 20f
+        boldPaint.textAlign = Paint.Align.RIGHT
+        boldPaint.textSize = 12f
+        canvas.drawText("TOTAL: ${String.format(localeBR, "%.2f", order.total ?: 0.0)}", rightMargin, y, boldPaint)
+        y += 30f
+
+        if (!order.message.isNullOrBlank()) {
+            paint.textAlign = Paint.Align.LEFT
+            boldPaint.textSize = 14f
+            canvas.drawText("Mensagem: ${order.message}", margin, y, paint)
+        }
+
+        pdfDocument.finishPage(page)
+
+        // Save to file
+        val fileName = "pedido_${order.id}.pdf"
+        val file = File(context.cacheDir, fileName)
+        try {
+            pdfDocument.writeTo(FileOutputStream(file))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            pdfDocument.close()
+        }
+
+        // Share the PDF
+        if (viaWhatsapp) {
+            shareViaWhatsapp(context, file, order.phone, isOrder = true)
+        } else {
+            shareFile(context, file, "Compartilhar Pedido")
+        }
     }
 
     private fun formatDate(dateStr: String?): String {

@@ -44,9 +44,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
 import com.r_erp.api.SupabaseOrder
 import com.r_erp.api.SupabaseOrderItem
 import com.r_erp.api.SupabaseService
+import com.r_erp.utils.PdfUtils
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -152,6 +154,7 @@ fun OrdersScreen(onAddOrder: () -> Unit, onOrderClick: (Int) -> Unit) {
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun OrderItem(order: SupabaseOrder, onClick: () -> Unit) {
+    val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
 
     Box {
@@ -257,14 +260,14 @@ fun OrderItem(order: SupabaseOrder, onClick: () -> Unit) {
                 text = { Text("Gerar PDF ...") },
                 onClick = {
                     showMenu = false
-                    // Action to be applied later
+                    PdfUtils.generateAndShareOrderPdf(context, order)
                 }
             )
             DropdownMenuItem(
                 text = { Text("Enviar por Whatsapp ...") },
                 onClick = {
                     showMenu = false
-                    // Action to be applied later
+                    PdfUtils.generateAndShareOrderPdf(context, order, viaWhatsapp = true)
                 }
             )
         }
