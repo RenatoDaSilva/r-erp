@@ -56,6 +56,8 @@ import com.r_erp.ui.screens.ServicesScreen
 import com.r_erp.ui.screens.ServiceDetailScreen
 import com.r_erp.ui.screens.BudgetsScreen
 import com.r_erp.ui.screens.BudgetDetailsScreen
+import com.r_erp.ui.screens.OrdersScreen
+import com.r_erp.ui.screens.OrderDetailsScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -94,6 +96,7 @@ fun MainScreen() {
     var selectedId by rememberSaveable { mutableStateOf<Int?>(null) }
     var isAddingAgendaItem by rememberSaveable { mutableStateOf(false) }
     var isAddingBudget by rememberSaveable { mutableStateOf(false) }
+    var isAddingOrder by rememberSaveable { mutableStateOf(false) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -109,6 +112,7 @@ fun MainScreen() {
                             selectedId = null
                             isAddingAgendaItem = false
                             isAddingBudget = false
+                            isAddingOrder = false
                             scope.launch {
                                 drawerState.close()
                             }
@@ -132,10 +136,12 @@ fun MainScreen() {
                         val title = when {
                             isAddingAgendaItem -> "Novo Agendamento"
                             isAddingBudget -> "Novo Orçamento"
+                            isAddingOrder -> "Novo Pedido"
                             selectedId != null && items[selectedItemIndex].title == "Clientes" -> "Dados do Cliente"
                             selectedId != null && items[selectedItemIndex].title == "Fornecedores" -> "Dados do Fornecedor"
                             selectedId != null && items[selectedItemIndex].title == "Produtos" -> "Dados do Produto"
                             selectedId != null && items[selectedItemIndex].title == "Serviços" -> "Dados do Serviço"
+                            selectedId != null && items[selectedItemIndex].title == "Pedidos" -> "Dados do Pedido"
                             else -> items[selectedItemIndex].title
                         }
                         Text(text = title)
@@ -222,6 +228,23 @@ fun MainScreen() {
                             BudgetsScreen(
                                 onAddBudget = { isAddingBudget = true },
                                 onBudgetClick = { id -> selectedId = id }
+                            )
+                        }
+                    }
+
+                    "Pedidos" -> {
+                        if (isAddingOrder || selectedId != null) {
+                            OrderDetailsScreen(
+                                orderId = selectedId,
+                                onBack = {
+                                    isAddingOrder = false
+                                    selectedId = null
+                                }
+                            )
+                        } else {
+                            OrdersScreen(
+                                onAddOrder = { isAddingOrder = true },
+                                onOrderClick = { id -> selectedId = id }
                             )
                         }
                     }

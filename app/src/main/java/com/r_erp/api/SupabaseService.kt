@@ -82,9 +82,30 @@ data class SupabaseBudgetItem(
     val total: Double? = null
 )
 
+data class SupabaseOrderItem(
+    val id: Int? = null,
+    @SerializedName("order_id") val orderId: Int? = null,
+    @SerializedName("product_id") val productId: Int? = null,
+    @SerializedName("service_id") val serviceId: Int? = null,
+    val description: String? = null,
+    val quantity: Double? = null,
+    val price: Double? = null,
+    val discount: Double? = null,
+    val total: Double? = null
+)
+
 // Specific DTO for inserting items
 data class SupabaseBudgetItemRequest(
     @SerializedName("budget_id") val budgetId: Int?,
+    @SerializedName("product_id") val productId: Int?,
+    @SerializedName("service_id") val serviceId: Int?,
+    val quantity: Double?,
+    val price: Double?,
+    val discount: Double?
+)
+
+data class SupabaseOrderItemRequest(
+    @SerializedName("order_id") val orderId: Int?,
     @SerializedName("product_id") val productId: Int?,
     @SerializedName("service_id") val serviceId: Int?,
     val quantity: Double?,
@@ -110,6 +131,23 @@ data class SupabaseBudget(
     val items: List<SupabaseBudgetItem>? = null
 )
 
+data class SupabaseOrder(
+    val id: Int? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("client_id") val clientId: Int? = null,
+    @SerializedName("client_name") val clientName: String? = null,
+    val phone: String? = null,
+    val city: String? = null,
+    val state: String? = null,
+    @SerializedName("total_items") val totalItems: Double? = null,
+    val discount: Double? = null,
+    val total: Double? = null,
+    val message: String? = null,
+    @SerializedName("budget_id") val budgetId: Int? = null,
+    @SerializedName("items_count") val itemsCount: Int? = null,
+    val items: List<SupabaseOrderItem>? = null
+)
+
 interface SupabaseService {
 
     @GET("budgets_with_items")
@@ -132,6 +170,27 @@ interface SupabaseService {
 
     @DELETE("budget_items")
     suspend fun deleteBudgetItems(@Query("budget_id") budgetIdFilter: String): Response<Unit>
+
+    @GET("orders_with_items")
+    suspend fun getOrdersWithItems(): List<SupabaseOrder>
+
+    @GET("orders_with_items")
+    suspend fun getOrderWithItems(@Query("id") idFilter: String): List<SupabaseOrder>
+
+    @POST("orders")
+    suspend fun createOrder(@Body order: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
+
+    @PATCH("orders")
+    suspend fun updateOrder(
+        @Query("id") idFilter: String,
+        @Body order: Map<String, @JvmSuppressWildcards Any>
+    ): Response<Unit>
+
+    @POST("order_items")
+    suspend fun createOrderItems(@Body items: List<SupabaseOrderItemRequest>): Response<Unit>
+
+    @DELETE("order_items")
+    suspend fun deleteOrderItems(@Query("order_id") orderIdFilter: String): Response<Unit>
 
     @GET("services")
     suspend fun getServices(): List<SupabaseServiceItem>
