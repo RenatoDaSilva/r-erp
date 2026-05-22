@@ -267,6 +267,9 @@ interface SupabaseService {
     @POST("rpc/get_sequence")
     suspend fun getSequence(@Body body: Map<String, String>): Int
 
+    @POST("rpc/create_order_from_budget")
+    suspend fun createOrderFromBudget(@Body body: Map<String, Int>): Int
+
     companion object {
         private const val BASE_URL = "https://euzmbicrbjpgcyrojvdm.supabase.co/rest/v1/"
         private const val API_KEY = BuildConfig.SUPABASE_KEY

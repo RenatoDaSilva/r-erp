@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
@@ -37,6 +38,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -53,13 +55,21 @@ import java.util.TimeZone
 
 import androidx.compose.ui.platform.LocalContext
 import com.r_erp.utils.PdfUtils
+import android.widget.Toast
+import kotlinx.coroutines.launch
 
 @Composable
 fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val supabaseService = remember { SupabaseService.create() }
     var budgets by remember { mutableStateOf<List<SupabaseBudget>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(value = true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    
+    val listState = rememberLazyListState()
+    var lastProcessedBudgetId by remember { mutableStateOf<Int?>(null) }
 
     val filteredBudgets = remember(searchQuery, budgets) {
         if (searchQuery.isBlank()) {
@@ -71,14 +81,30 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
         }
     }
 
+    fun loadBudgets() {
+        isLoading = true
+        scope.launch {
+            try {
+                budgets = supabaseService.getBudgetsWithItems()
+                isLoading = false
+            } catch (e: Exception) {
+                errorMessage = e.message ?: e.toString()
+                isLoading = false
+            }
+        }
+    }
+
     LaunchedEffect(Unit) {
-        try {
-            val supabaseService = SupabaseService.create()
-            budgets = supabaseService.getBudgetsWithItems()
-            isLoading = false
-        } catch (e: Exception) {
-            errorMessage = e.message ?: e.toString()
-            isLoading = false
+        loadBudgets()
+    }
+
+    LaunchedEffect(budgets) {
+        if (lastProcessedBudgetId != null && budgets.isNotEmpty()) {
+            val index = filteredBudgets.indexOfFirst { it.id == lastProcessedBudgetId }
+            if (index != -1) {
+                listState.scrollToItem(index)
+            }
+            lastProcessedBudgetId = null
         }
     }
 
@@ -138,12 +164,32 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
                     )
                 } else {
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 16.dp)
                     ) {
                         items(filteredBudgets) { budget ->
-                            BudgetItem(budget, onClick = { onBudgetClick(budget.id ?: 0) })
+                            BudgetItem(
+                                budget, 
+                                onClick = { onBudgetClick(budget.id ?: 0) },
+                                onCloseOrder = {
+                                    scope.launch {
+                                        try {
+                                            val result = supabaseService.createOrderFromBudget(mapOf("budget_id" to (budget.id ?: 0)))
+                                            if (result == -1) {
+                                                Toast.makeText(context, "Já existe um pedido gerado para este orçamento.", Toast.LENGTH_LONG).show()
+                                            } else {
+                                                Toast.makeText(context, "Pedido $result gerado com sucesso!", Toast.LENGTH_LONG).show()
+                                                lastProcessedBudgetId = budget.id
+                                                loadBudgets()
+                                            }
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "Erro ao fechar pedido: ${e.message}", Toast.LENGTH_LONG).show()
+                                        }
+                                    }
+                                }
+                            )
                         }
                     }
                 }
@@ -154,7 +200,7 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun BudgetItem(budget: SupabaseBudget, onClick: () -> Unit) {
+fun BudgetItem(budget: SupabaseBudget, onClick: () -> Unit, onCloseOrder: () -> Unit) {
     val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
     val highlightColor = MaterialTheme.colorScheme.primary
@@ -296,7 +342,7 @@ fun BudgetItem(budget: SupabaseBudget, onClick: () -> Unit) {
                 text = { Text("Fechar pedido ...") },
                 onClick = {
                     showMenu = false
-                    // Action to be applied later
+                    onCloseOrder()
                 }
             )
         }
