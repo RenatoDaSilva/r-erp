@@ -216,7 +216,7 @@ fun BudgetItem(budget: SupabaseBudget, onClick: () -> Unit, onCloseOrder: () -> 
                 .fillMaxWidth()
                 .padding(vertical = 8.dp)
                 .combinedClickable(
-                    onClick = onClick,
+                    onClick = { if (budget.orderId == null) onClick() },
                     onLongClick = { showMenu = true }
                 ),
             elevation = CardDefaults.cardElevation(defaultElevation = 2.dp),
@@ -343,7 +343,8 @@ fun BudgetItem(budget: SupabaseBudget, onClick: () -> Unit, onCloseOrder: () -> 
                 onClick = {
                     showMenu = false
                     onCloseOrder()
-                }
+                },
+                enabled = budget.orderId == null
             )
         }
     }
