@@ -81,7 +81,7 @@ fun OrderDetailsScreen(orderId: Int? = null, onBack: () -> Unit) {
     LaunchedEffect(Unit) {
         try {
             // Load Clients first
-            clients = supabaseService.getClients()
+            clients = supabaseService.getClients().sortedBy { it.fullName?.lowercase() ?: "" }
 
             if (orderId == null) {
                 // Creation mode: Get Next Sequence ID

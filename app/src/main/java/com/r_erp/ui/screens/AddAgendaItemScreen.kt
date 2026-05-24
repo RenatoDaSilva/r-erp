@@ -84,7 +84,7 @@ fun AddAgendaItemScreen(onBack: () -> Unit) {
 
     LaunchedEffect(Unit) {
         try {
-            clients = supabaseService.getClients()
+            clients = supabaseService.getClients().sortedBy { it.fullName?.lowercase() ?: "" }
             isLoadingClients = false
         } catch (e: Exception) {
             Toast.makeText(context, "Erro ao carregar clientes: ${e.message}", Toast.LENGTH_LONG).show()

@@ -91,7 +91,7 @@ fun BudgetDetailsScreen(budgetId: Int? = null, onBack: () -> Unit) {
     LaunchedEffect(Unit) {
         try {
             // Load Clients first
-            clients = supabaseService.getClients()
+            clients = supabaseService.getClients().sortedBy { it.fullName?.lowercase() ?: "" }
 
             if (budgetId == null) {
                 // Creation mode: Get Next Sequence ID
