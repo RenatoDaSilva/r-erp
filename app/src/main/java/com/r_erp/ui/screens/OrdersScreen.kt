@@ -45,6 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
+import com.r_erp.api.SupabaseClient
 import com.r_erp.api.SupabaseOrder
 import com.r_erp.api.SupabaseOrderItem
 import com.r_erp.api.SupabaseService
@@ -55,24 +56,29 @@ import java.util.TimeZone
 
 @Composable
 fun OrdersScreen(onAddOrder: () -> Unit, onOrderClick: (Int) -> Unit) {
+    val supabaseService = remember { SupabaseService.create() }
     var orders by remember { mutableStateOf<List<SupabaseOrder>>(emptyList()) }
+    var clients by remember { mutableStateOf<List<SupabaseClient>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(value = true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val filteredOrders = remember(searchQuery, orders) {
+    val clientMap = remember(clients) { clients.associate { it.id to it.fullName } }
+
+    val filteredOrders = remember(searchQuery, orders, clientMap) {
         if (searchQuery.isBlank()) {
             orders
         } else {
             orders.filter {
-                it.clientName?.contains(searchQuery, ignoreCase = true) == true
+                val clientName = it.clientName ?: clientMap[it.clientId] ?: ""
+                clientName.contains(searchQuery, ignoreCase = true)
             }
         }
     }
 
     LaunchedEffect(Unit) {
         try {
-            val supabaseService = SupabaseService.create()
+            clients = supabaseService.getClients()
             orders = supabaseService.getOrdersWithItems()
             isLoading = false
         } catch (e: Exception) {
@@ -142,7 +148,11 @@ fun OrdersScreen(onAddOrder: () -> Unit, onOrderClick: (Int) -> Unit) {
                             .padding(horizontal = 16.dp)
                     ) {
                         items(filteredOrders) { order ->
-                            OrderItem(order, onClick = { onOrderClick(order.id ?: 0) })
+                            OrderItem(
+                                order, 
+                                clientName = order.clientName ?: clientMap[order.clientId] ?: "N/A",
+                                onClick = { onOrderClick(order.id ?: 0) }
+                            )
                         }
                     }
                 }
@@ -153,7 +163,7 @@ fun OrdersScreen(onAddOrder: () -> Unit, onOrderClick: (Int) -> Unit) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun OrderItem(order: SupabaseOrder, onClick: () -> Unit) {
+fun OrderItem(order: SupabaseOrder, clientName: String, onClick: () -> Unit) {
     val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
 
@@ -180,7 +190,7 @@ fun OrderItem(order: SupabaseOrder, onClick: () -> Unit) {
                 }
                 
                 Text(
-                    text = order.clientName ?: "Cliente não informado",
+                    text = clientName,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -260,14 +270,14 @@ fun OrderItem(order: SupabaseOrder, onClick: () -> Unit) {
                 text = { Text("Gerar PDF ...") },
                 onClick = {
                     showMenu = false
-                    PdfUtils.generateAndShareOrderPdf(context, order)
+                    PdfUtils.generateAndShareOrderPdf(context, order, clientName = clientName)
                 }
             )
             DropdownMenuItem(
                 text = { Text("Enviar por Whatsapp ...") },
                 onClick = {
                     showMenu = false
-                    PdfUtils.generateAndShareOrderPdf(context, order, viaWhatsapp = true)
+                    PdfUtils.generateAndShareOrderPdf(context, order, clientName = clientName, viaWhatsapp = true)
                 }
             )
         }

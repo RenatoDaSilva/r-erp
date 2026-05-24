@@ -148,6 +148,24 @@ data class SupabaseOrder(
     val items: List<SupabaseOrderItem>? = null
 )
 
+data class SupabaseReceivable(
+    val id: Int? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("client_id") val clientId: Int? = null,
+    @SerializedName("client_fullname") val clientFullName: String? = null,
+    val origin: String? = null,
+    @SerializedName("order_id") val orderId: Int? = null,
+    val value: Double? = null,
+    @SerializedName("due_date") val dueDate: String? = null,
+    @SerializedName("paid_at") val paidAt: String? = null,
+    @SerializedName("paid_value") val paidValue: Double? = null
+)
+
+data class SupabaseReceivableTotal(
+    val outstanding: Double?,
+    val paid: Double?
+)
+
 interface SupabaseService {
 
     @GET("budgets_with_items")
@@ -191,6 +209,24 @@ interface SupabaseService {
 
     @DELETE("order_items")
     suspend fun deleteOrderItems(@Query("order_id") orderIdFilter: String): Response<Unit>
+
+    @GET("receivables")
+    suspend fun getReceivables(): List<SupabaseReceivable>
+
+    @GET("receivables")
+    suspend fun getReceivable(@Query("id") idFilter: String): List<SupabaseReceivable>
+
+    @POST("receivables")
+    suspend fun createReceivable(@Body receivable: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
+
+    @PATCH("receivables")
+    suspend fun updateReceivable(
+        @Query("id") idFilter: String,
+        @Body receivable: Map<String, @JvmSuppressWildcards Any>
+    ): Response<Unit>
+
+    @GET("receivables_totals")
+    suspend fun getReceivablesTotals(): List<SupabaseReceivableTotal>
 
     @GET("services")
     suspend fun getServices(): List<SupabaseServiceItem>

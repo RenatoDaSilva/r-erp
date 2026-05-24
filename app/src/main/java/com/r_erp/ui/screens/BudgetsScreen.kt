@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.r_erp.api.SupabaseClient
 import com.r_erp.api.SupabaseBudget
 import com.r_erp.api.SupabaseBudgetItem
 import com.r_erp.api.SupabaseService
@@ -64,6 +65,7 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
     val scope = rememberCoroutineScope()
     val supabaseService = remember { SupabaseService.create() }
     var budgets by remember { mutableStateOf<List<SupabaseBudget>>(emptyList()) }
+    var clients by remember { mutableStateOf<List<SupabaseClient>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(value = true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -71,12 +73,15 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
     val listState = rememberLazyListState()
     var lastProcessedBudgetId by remember { mutableStateOf<Int?>(null) }
 
-    val filteredBudgets = remember(searchQuery, budgets) {
+    val clientMap = remember(clients) { clients.associate { it.id to it.fullName } }
+
+    val filteredBudgets = remember(searchQuery, budgets, clientMap) {
         if (searchQuery.isBlank()) {
             budgets
         } else {
             budgets.filter {
-                it.clientName?.contains(searchQuery, ignoreCase = true) == true
+                val clientName = it.clientName ?: clientMap[it.clientId] ?: ""
+                clientName.contains(searchQuery, ignoreCase = true)
             }
         }
     }
@@ -85,6 +90,7 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
         isLoading = true
         scope.launch {
             try {
+                clients = supabaseService.getClients()
                 budgets = supabaseService.getBudgetsWithItems()
                 isLoading = false
             } catch (e: Exception) {
@@ -172,6 +178,7 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
                         items(filteredBudgets) { budget ->
                             BudgetItem(
                                 budget, 
+                                clientName = budget.clientName ?: clientMap[budget.clientId] ?: "N/A",
                                 onClick = { onBudgetClick(budget.id ?: 0) },
                                 onCloseOrder = {
                                     scope.launch {
@@ -200,7 +207,7 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun BudgetItem(budget: SupabaseBudget, onClick: () -> Unit, onCloseOrder: () -> Unit) {
+fun BudgetItem(budget: SupabaseBudget, clientName: String, onClick: () -> Unit, onCloseOrder: () -> Unit) {
     val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
     val highlightColor = MaterialTheme.colorScheme.primary
@@ -241,7 +248,7 @@ fun BudgetItem(budget: SupabaseBudget, onClick: () -> Unit, onCloseOrder: () -> 
                 }
                 
                 Text(
-                    text = budget.clientName ?: "Cliente não informado",
+                    text = clientName,
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.Bold
                 )
@@ -328,14 +335,14 @@ fun BudgetItem(budget: SupabaseBudget, onClick: () -> Unit, onCloseOrder: () -> 
                 text = { Text("Gerar PDF ...") },
                 onClick = {
                     showMenu = false
-                    PdfUtils.generateAndShareBudgetPdf(context, budget)
+                    PdfUtils.generateAndShareBudgetPdf(context, budget, clientName = clientName)
                 }
             )
             DropdownMenuItem(
                 text = { Text("Enviar por Whatsapp ...") },
                 onClick = {
                     showMenu = false
-                    PdfUtils.generateAndShareBudgetPdf(context, budget, viaWhatsapp = true)
+                    PdfUtils.generateAndShareBudgetPdf(context, budget, clientName = clientName, viaWhatsapp = true)
                 }
             )
             DropdownMenuItem(

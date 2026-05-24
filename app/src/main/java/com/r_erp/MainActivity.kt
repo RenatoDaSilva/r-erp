@@ -58,6 +58,8 @@ import com.r_erp.ui.screens.BudgetsScreen
 import com.r_erp.ui.screens.BudgetDetailsScreen
 import com.r_erp.ui.screens.OrdersScreen
 import com.r_erp.ui.screens.OrderDetailsScreen
+import com.r_erp.ui.screens.ReceivablesScreen
+import com.r_erp.ui.screens.ReceivableDetailsScreen
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -89,6 +91,7 @@ fun MainScreen() {
         NavigationItem("Produtos", Icons.Default.ShoppingCart),
         NavigationItem("Serviços", Icons.Default.Build),
         NavigationItem("Compras", Icons.Default.LocalMall),
+        NavigationItem("Receber", Icons.Default.LocalMall),
         NavigationItem("Orçamentos", Icons.Default.Description),
         NavigationItem("Pedidos", Icons.AutoMirrored.Filled.Assignment),
     )
@@ -97,6 +100,7 @@ fun MainScreen() {
     var isAddingAgendaItem by rememberSaveable { mutableStateOf(false) }
     var isAddingBudget by rememberSaveable { mutableStateOf(false) }
     var isAddingOrder by rememberSaveable { mutableStateOf(false) }
+    var isAddingReceivable by rememberSaveable { mutableStateOf(false) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -113,6 +117,7 @@ fun MainScreen() {
                             isAddingAgendaItem = false
                             isAddingBudget = false
                             isAddingOrder = false
+                            isAddingReceivable = false
                             scope.launch {
                                 drawerState.close()
                             }
@@ -137,11 +142,13 @@ fun MainScreen() {
                             isAddingAgendaItem -> "Novo Agendamento"
                             isAddingBudget -> "Novo Orçamento"
                             isAddingOrder -> "Novo Pedido"
+                            isAddingReceivable -> "Novo Recebimento"
                             selectedId != null && items[selectedItemIndex].title == "Clientes" -> "Dados do Cliente"
                             selectedId != null && items[selectedItemIndex].title == "Fornecedores" -> "Dados do Fornecedor"
                             selectedId != null && items[selectedItemIndex].title == "Produtos" -> "Dados do Produto"
                             selectedId != null && items[selectedItemIndex].title == "Serviços" -> "Dados do Serviço"
                             selectedId != null && items[selectedItemIndex].title == "Pedidos" -> "Dados do Pedido"
+                            selectedId != null && items[selectedItemIndex].title == "Receber" -> "Dados do Título"
                             else -> items[selectedItemIndex].title
                         }
                         Text(text = title)
@@ -245,6 +252,23 @@ fun MainScreen() {
                             OrdersScreen(
                                 onAddOrder = { isAddingOrder = true },
                                 onOrderClick = { id -> selectedId = id }
+                            )
+                        }
+                    }
+
+                    "Receber" -> {
+                        if (isAddingReceivable || selectedId != null) {
+                            ReceivableDetailsScreen(
+                                receivableId = selectedId ?: -1,
+                                onBack = {
+                                    isAddingReceivable = false
+                                    selectedId = null
+                                }
+                            )
+                        } else {
+                            ReceivablesScreen(
+                                onAddReceivable = { isAddingReceivable = true },
+                                onReceivableClick = { id -> selectedId = id }
                             )
                         }
                     }
