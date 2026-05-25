@@ -14,6 +14,9 @@ import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Query
+import androidx.compose.runtime.compositionLocalOf
+
+val LocalToken = compositionLocalOf { "" }
 
 data class SupabaseClient(
     val id: Int? = null,
@@ -166,7 +169,23 @@ data class SupabaseReceivableTotal(
     val paid: Double?
 )
 
+data class AuthResponse(
+    @SerializedName("access_token") val accessToken: String,
+    val user: SupabaseUser
+)
+
+data class SupabaseUser(
+    val id: String,
+    val email: String
+)
+
 interface SupabaseService {
+
+    @POST("https://euzmbicrbjpgcyrojvdm.supabase.co/auth/v1/signup")
+    suspend fun signUp(@Body body: Map<String, String>): Response<AuthResponse>
+
+    @POST("https://euzmbicrbjpgcyrojvdm.supabase.co/auth/v1/token?grant_type=password")
+    suspend fun signIn(@Body body: Map<String, String>): Response<AuthResponse>
 
     @GET("budgets_with_items")
     suspend fun getBudgetsWithItems(): List<SupabaseBudget>
@@ -309,15 +328,23 @@ interface SupabaseService {
     companion object {
         private const val BASE_URL = "https://euzmbicrbjpgcyrojvdm.supabase.co/rest/v1/"
         private const val API_KEY = BuildConfig.SUPABASE_KEY
+        
+        var currentToken: String? = null
 
-        fun create(): SupabaseService {
+        fun create(token: String? = null): SupabaseService {
+            val authToken = token ?: currentToken
             val authInterceptor = Interceptor { chain ->
-                val request = chain.request().newBuilder()
+                val requestBuilder = chain.request().newBuilder()
                     .addHeader("Content-Type", "application/json")
                     .addHeader("apikey", API_KEY)
-                    .addHeader("Authorization", "Bearer $API_KEY")
-                    .build()
-                chain.proceed(request)
+                
+                if (authToken != null) {
+                    requestBuilder.addHeader("Authorization", "Bearer $authToken")
+                } else {
+                    requestBuilder.addHeader("Authorization", "Bearer $API_KEY")
+                }
+
+                chain.proceed(requestBuilder.build())
             }
 
             val client = OkHttpClient.Builder()
