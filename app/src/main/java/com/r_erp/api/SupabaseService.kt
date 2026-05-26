@@ -166,7 +166,23 @@ data class SupabaseReceivableTotal(
     val paid: Double?
 )
 
+data class AuthResponse(
+    @SerializedName("access_token") val accessToken: String,
+    val user: SupabaseUser
+)
+
+data class SupabaseUser(
+    val id: String,
+    val email: String
+)
+
 interface SupabaseService {
+
+    @POST("https://euzmbicrbjpgcyrojvdm.supabase.co/auth/v1/signup")
+    suspend fun signUp(@Body body: Map<String, String>): Response<AuthResponse>
+
+    @POST("https://euzmbicrbjpgcyrojvdm.supabase.co/auth/v1/token?grant_type=password")
+    suspend fun signIn(@Body body: Map<String, String>): Response<AuthResponse>
 
     @GET("budgets_with_items")
     suspend fun getBudgetsWithItems(): List<SupabaseBudget>
@@ -185,6 +201,9 @@ interface SupabaseService {
 
     @POST("budget_items")
     suspend fun createBudgetItems(@Body items: List<SupabaseBudgetItemRequest>): Response<Unit>
+
+    @GET("budget_items")
+    suspend fun getBudgetItems(@Query("budget_id") budgetIdFilter: String): List<SupabaseBudgetItem>
 
     @DELETE("budget_items")
     suspend fun deleteBudgetItems(@Query("budget_id") budgetIdFilter: String): Response<Unit>
@@ -206,6 +225,9 @@ interface SupabaseService {
 
     @POST("order_items")
     suspend fun createOrderItems(@Body items: List<SupabaseOrderItemRequest>): Response<Unit>
+
+    @GET("order_items")
+    suspend fun getOrderItems(@Query("order_id") orderIdFilter: String): List<SupabaseOrderItem>
 
     @DELETE("order_items")
     suspend fun deleteOrderItems(@Query("order_id") orderIdFilter: String): Response<Unit>
@@ -309,15 +331,23 @@ interface SupabaseService {
     companion object {
         private const val BASE_URL = "https://euzmbicrbjpgcyrojvdm.supabase.co/rest/v1/"
         private const val API_KEY = BuildConfig.SUPABASE_KEY
+        
+        var currentToken: String? = null
 
-        fun create(): SupabaseService {
+        fun create(token: String? = null): SupabaseService {
             val authInterceptor = Interceptor { chain ->
-                val request = chain.request().newBuilder()
+                val requestBuilder = chain.request().newBuilder()
                     .addHeader("Content-Type", "application/json")
                     .addHeader("apikey", API_KEY)
-                    .addHeader("Authorization", "Bearer $API_KEY")
-                    .build()
-                chain.proceed(request)
+                
+                val finalToken = token ?: currentToken
+                if (finalToken != null) {
+                    requestBuilder.addHeader("Authorization", "Bearer $finalToken")
+                } else {
+                    requestBuilder.addHeader("Authorization", "Bearer $API_KEY")
+                }
+
+                chain.proceed(requestBuilder.build())
             }
 
             val client = OkHttpClient.Builder()

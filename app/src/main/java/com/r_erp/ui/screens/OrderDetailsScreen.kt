@@ -99,9 +99,15 @@ fun OrderDetailsScreen(orderId: Int? = null, onBack: () -> Unit) {
                     message = o.message ?: ""
                     budgetIdStored = o.budgetId
                     
-                    // Load items
+                    // Load items directly from order_items table to get productId/serviceId
                     orderItems.clear()
-                    o.items?.let { orderItems.addAll(it) }
+                    val itemsFromTable = supabaseService.getOrderItems(orderIdFilter = "eq.$orderId")
+                    if (itemsFromTable.isNotEmpty()) {
+                        orderItems.addAll(itemsFromTable)
+                    } else if (o.items != null) {
+                        // Fallback to view items if table is empty
+                        orderItems.addAll(o.items)
+                    }
                 } else {
                     Toast.makeText(context, "Pedido não encontrado", Toast.LENGTH_SHORT).show()
                     onBack()
