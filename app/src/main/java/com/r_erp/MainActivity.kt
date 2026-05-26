@@ -9,8 +9,10 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
+import androidx.compose.material.icons.automirrored.filled.ExitToApp
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Description
@@ -19,6 +21,7 @@ import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.LocalMall
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DrawerValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -32,6 +35,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.rememberDrawerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -43,32 +48,39 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.r_erp.api.LocalToken
+import com.r_erp.api.SupabaseService
 import com.r_erp.ui.theme.RerpTheme
-import com.r_erp.ui.screens.ClientsScreen
-import com.r_erp.ui.screens.ClientDetailScreen
-import com.r_erp.ui.screens.SuppliersScreen
-import com.r_erp.ui.screens.SupplierDetailScreen
-import com.r_erp.ui.screens.AgendaScreen
-import com.r_erp.ui.screens.AddAgendaItemScreen
-import com.r_erp.ui.screens.ProductsScreen
-import com.r_erp.ui.screens.ProductDetailScreen
-import com.r_erp.ui.screens.ServicesScreen
-import com.r_erp.ui.screens.ServiceDetailScreen
-import com.r_erp.ui.screens.BudgetsScreen
-import com.r_erp.ui.screens.BudgetDetailsScreen
-import com.r_erp.ui.screens.OrdersScreen
-import com.r_erp.ui.screens.OrderDetailsScreen
-import com.r_erp.ui.screens.ReceivablesScreen
-import com.r_erp.ui.screens.ReceivableDetailsScreen
+import com.r_erp.ui.screens.*
+import com.r_erp.utils.SessionManager
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
+    private lateinit var sessionManager: SessionManager
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        sessionManager = SessionManager(this)
         enableEdgeToEdge()
         setContent {
             RerpTheme {
-                MainScreen()
+                val token by sessionManager.authToken.collectAsState(initial = "")
+                
+                if (token == null) {
+                    SupabaseService.currentToken = null
+                    LoginScreen(sessionManager) {
+                        // Success handled by Flow
+                    }
+                } else if (token != "") {
+                    SupabaseService.currentToken = token
+                    CompositionLocalProvider(LocalToken provides token!!) {
+                        MainScreen(sessionManager)
+                    }
+                } else {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
             }
         }
     }
@@ -81,7 +93,7 @@ data class NavigationItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen() {
+fun MainScreen(sessionManager: SessionManager) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
     val items = listOf(
@@ -131,6 +143,26 @@ fun MainScreen() {
                         modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
                     )
                 }
+                
+                Spacer(modifier = Modifier.weight(1f))
+                
+                NavigationDrawerItem(
+                    label = { Text(text = "Sair") },
+                    selected = false,
+                    onClick = {
+                        scope.launch {
+                            sessionManager.clearSession()
+                        }
+                    },
+                    icon = {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.ExitToApp,
+                            contentDescription = "Sair",
+                        )
+                    },
+                    modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                )
+                Spacer(modifier = Modifier.height(16.dp))
             }
         },
     ) {
@@ -284,13 +316,5 @@ fun MainScreen() {
                 }
             }
         }
-    }
-}
-
-@Preview(showBackground = true)
-@Composable
-fun MainScreenPreview() {
-    RerpTheme {
-        MainScreen()
     }
 }

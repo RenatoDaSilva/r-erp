@@ -14,6 +14,9 @@ import retrofit2.http.GET
 import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Query
+import androidx.compose.runtime.compositionLocalOf
+
+val LocalToken = compositionLocalOf { "" }
 
 data class SupabaseClient(
     val id: Int? = null,
