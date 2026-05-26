@@ -119,9 +119,15 @@ fun BudgetDetailsScreen(budgetId: Int? = null, onBack: () -> Unit) {
                     discount = String.format(Locale.US, "%.2f", b.discount ?: 0.0)
                     message = b.message ?: ""
                     
-                    // Load items
+                    // Load items directly from budget_items table to get productId/serviceId
                     budgetItems.clear()
-                    b.items?.let { budgetItems.addAll(it) }
+                    val itemsFromTable = supabaseService.getBudgetItems(budgetIdFilter = "eq.$budgetId")
+                    if (itemsFromTable.isNotEmpty()) {
+                        budgetItems.addAll(itemsFromTable)
+                    } else if (b.items != null) {
+                        // Fallback to view items if table is empty (unlikely but safe)
+                        budgetItems.addAll(b.items)
+                    }
                 } else {
                     Toast.makeText(context, "Orçamento não encontrado", Toast.LENGTH_SHORT).show()
                     onBack()
@@ -280,6 +286,11 @@ fun BudgetDetailsScreen(budgetId: Int? = null, onBack: () -> Unit) {
                             scope.launch {
                                 try {
                                     val apiDateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                                    if (nextId == null) {
+                                        Toast.makeText(context, "Erro: ID do orçamento não gerado. Tente reabrir a tela.", Toast.LENGTH_LONG).show()
+                                        return@launch
+                                    }
+
                                     val budgetMap = mutableMapOf<String, Any>()
                                     budgetMap["id"] = nextId!!
                                     budgetMap["client_id"] = selectedClient!!.id!!

@@ -205,6 +205,9 @@ interface SupabaseService {
     @POST("budget_items")
     suspend fun createBudgetItems(@Body items: List<SupabaseBudgetItemRequest>): Response<Unit>
 
+    @GET("budget_items")
+    suspend fun getBudgetItems(@Query("budget_id") budgetIdFilter: String): List<SupabaseBudgetItem>
+
     @DELETE("budget_items")
     suspend fun deleteBudgetItems(@Query("budget_id") budgetIdFilter: String): Response<Unit>
 
@@ -225,6 +228,9 @@ interface SupabaseService {
 
     @POST("order_items")
     suspend fun createOrderItems(@Body items: List<SupabaseOrderItemRequest>): Response<Unit>
+
+    @GET("order_items")
+    suspend fun getOrderItems(@Query("order_id") orderIdFilter: String): List<SupabaseOrderItem>
 
     @DELETE("order_items")
     suspend fun deleteOrderItems(@Query("order_id") orderIdFilter: String): Response<Unit>
@@ -332,14 +338,14 @@ interface SupabaseService {
         var currentToken: String? = null
 
         fun create(token: String? = null): SupabaseService {
-            val authToken = token ?: currentToken
             val authInterceptor = Interceptor { chain ->
                 val requestBuilder = chain.request().newBuilder()
                     .addHeader("Content-Type", "application/json")
                     .addHeader("apikey", API_KEY)
                 
-                if (authToken != null) {
-                    requestBuilder.addHeader("Authorization", "Bearer $authToken")
+                val finalToken = token ?: currentToken
+                if (finalToken != null) {
+                    requestBuilder.addHeader("Authorization", "Bearer $finalToken")
                 } else {
                     requestBuilder.addHeader("Authorization", "Bearer $API_KEY")
                 }
