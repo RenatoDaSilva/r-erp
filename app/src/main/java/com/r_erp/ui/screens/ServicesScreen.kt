@@ -33,14 +33,18 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.SupabaseService
 import com.r_erp.api.SupabaseServiceItem
+import com.r_erp.api.LocalToken
 import java.util.Locale
 
 @Composable
 fun ServicesScreen(onServiceClick: (Int) -> Unit) {
+    val token = LocalToken.current
     var services by remember { mutableStateOf<List<SupabaseServiceItem>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(value = true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    val supabaseService = remember(token) { SupabaseService.create(token) }
 
     val filteredServices = remember(searchQuery, services) {
         if (searchQuery.isBlank()) {
@@ -52,13 +56,16 @@ fun ServicesScreen(onServiceClick: (Int) -> Unit) {
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(supabaseService) {
         try {
-            val supabaseService = SupabaseService.create()
             services = supabaseService.getServices()
             isLoading = false
         } catch (e: Exception) {
-            errorMessage = e.message ?: e.toString()
+            errorMessage = if (e.message?.contains("401") == true) {
+                "Sessão expirada. Por favor, saia e entre novamente."
+            } else {
+                e.message ?: e.toString()
+            }
             isLoading = false
         }
     }

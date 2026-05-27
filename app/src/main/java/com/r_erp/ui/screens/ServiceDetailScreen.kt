@@ -29,6 +29,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.SupabaseService
+import com.r_erp.api.LocalToken
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -36,6 +37,8 @@ import java.util.Locale
 fun ServiceDetailScreen(serviceId: Int, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val token = LocalToken.current
+    val supabaseService = remember(token) { SupabaseService.create(token) }
     var isLoading by remember { mutableStateOf(value = true) }
     var isSaving by remember { mutableStateOf(value = false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -46,8 +49,6 @@ fun ServiceDetailScreen(serviceId: Int, onBack: () -> Unit) {
 
     LaunchedEffect(serviceId) {
         try {
-            val supabaseService = SupabaseService.create()
-            
             if (serviceId != -1) {
                 val fetchedServices = supabaseService.getService(idFilter = "eq.$serviceId")
                 if (fetchedServices.isNotEmpty()) {
@@ -126,8 +127,6 @@ fun ServiceDetailScreen(serviceId: Int, onBack: () -> Unit) {
                         isSaving = true
                         scope.launch {
                             try {
-                                val supabaseService = SupabaseService.create()
-                                
                                 val serviceMap = mutableMapOf<String, Any>()
                                 if (description.isNotBlank()) serviceMap["description"] = description
                                 val p = priceStr.toDoubleOrNull() ?: 0.0

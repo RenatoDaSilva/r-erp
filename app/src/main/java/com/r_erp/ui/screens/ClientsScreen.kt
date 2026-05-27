@@ -42,18 +42,20 @@ import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.SupabaseService
 import com.r_erp.api.SupabaseClient
+import com.r_erp.api.LocalToken
 import kotlinx.coroutines.launch
 
 @Composable
 fun ClientsScreen(onClientClick: (Int) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val token = LocalToken.current
     var clients by remember { mutableStateOf<List<SupabaseClient>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(value = true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val supabaseService = remember { SupabaseService.create() }
+    val supabaseService = remember(token) { SupabaseService.create(token) }
 
     val filteredClients = remember(searchQuery, clients) {
         if (searchQuery.isBlank()) {
@@ -73,13 +75,17 @@ fun ClientsScreen(onClientClick: (Int) -> Unit) {
                 clients = fetchedClients.sortedBy { it.fullName?.lowercase() ?: "" }
                 isLoading = false
             } catch (e: Exception) {
-                errorMessage = e.message ?: "Erro desconhecido"
+                errorMessage = if (e.message?.contains("401") == true) {
+                    "Sessão expirada. Por favor, saia e entre novamente."
+                } else {
+                    e.message ?: "Erro desconhecido"
+                }
                 isLoading = false
             }
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(supabaseService) {
         loadClients()
     }
 

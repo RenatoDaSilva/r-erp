@@ -47,6 +47,7 @@ import android.util.Log
 import com.r_erp.api.SupabaseClient
 import com.r_erp.api.SupabaseService
 import com.r_erp.api.SupabaseReceivable
+import com.r_erp.api.LocalToken
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -58,7 +59,8 @@ import java.util.TimeZone
 fun ReceivableDetailsScreen(receivableId: Int, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val supabaseService = remember { SupabaseService.create() }
+    val token = LocalToken.current
+    val supabaseService = remember(token) { SupabaseService.create(token) }
 
     var isLoading by remember { mutableStateOf(value = receivableId != -1) }
     var isSaving by remember { mutableStateOf(value = false) }
@@ -79,7 +81,7 @@ fun ReceivableDetailsScreen(receivableId: Int, onBack: () -> Unit) {
 
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.US).apply { timeZone = TimeZone.getTimeZone("UTC") } }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(supabaseService) {
         try {
             clients = supabaseService.getClients().sortedBy { it.fullName?.lowercase() ?: "" }
             

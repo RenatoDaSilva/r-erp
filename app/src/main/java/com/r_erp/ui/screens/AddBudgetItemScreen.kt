@@ -45,6 +45,7 @@ import com.r_erp.api.SupabaseService
 import com.r_erp.api.SupabaseProduct
 import com.r_erp.api.SupabaseServiceItem
 import com.r_erp.api.SupabaseBudgetItem
+import com.r_erp.api.LocalToken
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -54,7 +55,8 @@ fun AddBudgetItemScreen(
     onCancel: () -> Unit
 ) {
     val context = LocalContext.current
-    val supabaseService = remember { SupabaseService.create() }
+    val token = LocalToken.current
+    val supabaseService = remember(token) { SupabaseService.create(token) }
 
     var isLoading by remember { mutableStateOf(true) }
     var isService by remember { mutableStateOf(false) }

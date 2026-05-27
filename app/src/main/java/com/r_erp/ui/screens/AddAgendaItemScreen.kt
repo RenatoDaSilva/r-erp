@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.Button
@@ -26,6 +25,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.ExposedDropdownMenuAnchorType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -48,6 +48,7 @@ import com.r_erp.api.ApiService
 import com.r_erp.api.SupabaseService
 import com.r_erp.api.AgendaItem
 import com.r_erp.api.SupabaseClient
+import com.r_erp.api.LocalToken
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -60,8 +61,9 @@ import java.util.TimeZone
 fun AddAgendaItemScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val token = LocalToken.current
     val apiService = remember { ApiService.create() }
-    val supabaseService = remember { SupabaseService.create() }
+    val supabaseService = remember(token) { SupabaseService.create(token) }
 
     var clients by remember { mutableStateOf<List<SupabaseClient>>(emptyList()) }
     var isLoadingClients by remember { mutableStateOf(true) }
@@ -82,12 +84,16 @@ fun AddAgendaItemScreen(onBack: () -> Unit) {
     val dateFormatter = remember { SimpleDateFormat("dd/MM/yyyy", Locale.getDefault()).apply { timeZone = TimeZone.getTimeZone("UTC") } }
     val timeFormat = "%02d:%02d"
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(supabaseService) {
         try {
             clients = supabaseService.getClients().sortedBy { it.fullName?.lowercase() ?: "" }
             isLoadingClients = false
         } catch (e: Exception) {
-            Toast.makeText(context, "Erro ao carregar clientes: ${e.message}", Toast.LENGTH_LONG).show()
+            // Only show toast for real errors, ignore composition cleanup messages
+            if (e.message?.contains("composition") != true) {
+                val msg = if (e.message?.contains("401") == true) "Sessão expirada. Saia e entre novamente." else e.message
+                Toast.makeText(context, "Erro ao carregar clientes: $msg", Toast.LENGTH_LONG).show()
+            }
             isLoadingClients = false
         }
     }
@@ -118,7 +124,7 @@ fun AddAgendaItemScreen(onBack: () -> Unit) {
                     readOnly = true,
                     label = { Text("Cliente") },
                     trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
-                    modifier = Modifier.menuAnchor().fillMaxWidth()
+                    modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true).fillMaxWidth()
                 )
                 ExposedDropdownMenu(
                     expanded = expanded,
@@ -244,7 +250,11 @@ fun AddAgendaItemScreen(onBack: () -> Unit) {
                                 fullDay = fullDay
                             )
 
-                            apiService.addAgendaItem(item = item)
+                            val userId = SupabaseService.getUserIdFromToken(token) ?: ""
+                            apiService.addAgendaItem(
+                                calendarName = userId,
+                                item = item
+                            )
                             Toast.makeText(context, "Agendamento realizado!", Toast.LENGTH_SHORT).show()
                             onBack()
                         } catch (e: Exception) {

@@ -47,6 +47,8 @@ import android.widget.TextView
 import androidx.core.text.HtmlCompat
 import com.r_erp.api.ApiService
 import com.r_erp.api.AgendaItem
+import com.r_erp.api.LocalToken
+import com.r_erp.api.SupabaseService
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -55,12 +57,15 @@ import java.util.TimeZone
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun AgendaScreen(onAddAgendaItem: () -> Unit) {
+    val token = LocalToken.current
     var selectedDateMillis by remember { mutableStateOf(System.currentTimeMillis()) }
     var showDatePicker by remember { mutableStateOf(false) }
     var agendaItems by remember { mutableStateOf<List<AgendaItem>>(emptyList()) }
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var offsetX by remember { mutableFloatStateOf(0f) }
+
+    val supabaseService = remember(token) { SupabaseService.create(token) }
 
     val apiDateFormatter = remember { 
         SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {
@@ -73,17 +78,25 @@ fun AgendaScreen(onAddAgendaItem: () -> Unit) {
         }
     }
 
-    LaunchedEffect(selectedDateMillis) {
+    LaunchedEffect(selectedDateMillis, token) {
         isLoading = true
         errorMessage = null
         try {
             val apiService = ApiService.create()
             val formattedDate = apiDateFormatter.format(Date(selectedDateMillis))
             val dateWithQuotes = "\"$formattedDate\""
-            agendaItems = apiService.getAgenda(date = dateWithQuotes)
+            
+            val userId = SupabaseService.getUserIdFromToken(token) ?: ""
+            
+            agendaItems = apiService.getAgenda(
+                date = dateWithQuotes,
+                calendarName = userId
+            )
             isLoading = false
         } catch (e: Exception) {
-            errorMessage = e.message ?: "Erro ao carregar agenda"
+            if (e.message?.contains("composition") != true) {
+                errorMessage = e.message ?: "Erro ao carregar agenda"
+            }
             isLoading = false
         }
     }

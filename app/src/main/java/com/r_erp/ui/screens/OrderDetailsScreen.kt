@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.SupabaseClient
 import com.r_erp.api.SupabaseService
+import com.r_erp.api.LocalToken
 import com.r_erp.api.SupabaseOrderItem
 import com.r_erp.api.SupabaseOrderItemRequest
 import kotlinx.coroutines.launch
@@ -56,7 +57,8 @@ import java.util.Locale
 fun OrderDetailsScreen(orderId: Int? = null, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val supabaseService = remember { SupabaseService.create() }
+    val token = LocalToken.current
+    val supabaseService = remember(token) { SupabaseService.create(token) }
 
     var isLoading by remember { mutableStateOf(true) }
     var nextId by remember { mutableStateOf<Int?>(orderId) }
@@ -78,7 +80,7 @@ fun OrderDetailsScreen(orderId: Int? = null, onBack: () -> Unit) {
     var isAddingItem by remember { mutableStateOf(false) }
     var errorDialogMessage by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(supabaseService) {
         try {
             // Load Clients first
             clients = supabaseService.getClients().sortedBy { it.fullName?.lowercase() ?: "" }

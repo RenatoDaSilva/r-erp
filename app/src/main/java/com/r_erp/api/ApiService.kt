@@ -21,12 +21,14 @@ interface ApiService {
     @GET("exec")
     suspend fun getAgenda(
         @Query("option") option: String = "agenda",
-        @Query("date") date: String
+        @Query("date") date: String,
+        @Query("calendarName") calendarName: String
     ): List<AgendaItem>
 
     @POST("exec")
     suspend fun addAgendaItem(
         @Query("option") option: String = "agenda",
+        @Query("calendarName") calendarName: String,
         @Body item: AgendaItem
     ): ResponseBody
 

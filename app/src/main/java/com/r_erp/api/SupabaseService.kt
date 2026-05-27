@@ -340,17 +340,26 @@ interface SupabaseService {
         fun create(token: String? = null): SupabaseService {
             val authInterceptor = Interceptor { chain ->
                 val requestBuilder = chain.request().newBuilder()
-                    .addHeader("Content-Type", "application/json")
-                    .addHeader("apikey", API_KEY)
+                    .header("Content-Type", "application/json")
+                    .header("apikey", API_KEY)
+                    .header("X-Client-Info", "r-erp-android")
                 
-                val finalToken = token ?: currentToken
-                if (finalToken != null) {
-                    requestBuilder.addHeader("Authorization", "Bearer $finalToken")
-                } else {
-                    requestBuilder.addHeader("Authorization", "Bearer $API_KEY")
+                val finalToken: String = when {
+                    !token.isNullOrBlank() -> token
+                    !currentToken.isNullOrBlank() -> currentToken!!
+                    else -> API_KEY
                 }
 
-                chain.proceed(requestBuilder.build())
+                requestBuilder.header("Authorization", "Bearer $finalToken")
+                
+                val request = requestBuilder.build()
+                val response = chain.proceed(request)
+                
+                if (response.code == 401) {
+                    android.util.Log.e("SupabaseService", "Unauthorized (401) for ${request.url} using token prefix: ${finalToken.take(10)}...")
+                }
+                
+                response
             }
 
             val client = OkHttpClient.Builder()
@@ -368,6 +377,18 @@ interface SupabaseService {
                 .build()
 
             return retrofit.create(SupabaseService::class.java)
+        }
+
+        fun getUserIdFromToken(token: String): String? {
+            return try {
+                val parts = token.split(".")
+                if (parts.size < 2) return null
+                val payload = String(android.util.Base64.decode(parts[1], android.util.Base64.URL_SAFE))
+                val jsonObject = com.google.gson.JsonParser.parseString(payload).asJsonObject
+                jsonObject.get("sub")?.asString
+            } catch (e: Exception) {
+                null
+            }
         }
     }
 }

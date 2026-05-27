@@ -29,12 +29,15 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import android.widget.Toast
 import com.r_erp.api.SupabaseService
+import com.r_erp.api.LocalToken
 import kotlinx.coroutines.launch
 
 @Composable
 fun SupplierDetailScreen(supplierId: Int, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val token = LocalToken.current
+    val supabaseService = remember(token) { SupabaseService.create(token) }
     var isLoading by remember { mutableStateOf(value = supplierId != -1) }
     var isSaving by remember { mutableStateOf(value = false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -52,7 +55,6 @@ fun SupplierDetailScreen(supplierId: Int, onBack: () -> Unit) {
     LaunchedEffect(supplierId) {
         if (supplierId != -1) {
             try {
-                val supabaseService = SupabaseService.create()
                 val fetchedSuppliers = supabaseService.getSupplier(idFilter = "eq.$supplierId")
 
                 if (fetchedSuppliers.isNotEmpty()) {
@@ -169,8 +171,6 @@ fun SupplierDetailScreen(supplierId: Int, onBack: () -> Unit) {
                         isSaving = true
                         scope.launch {
                             try {
-                                val supabaseService = SupabaseService.create()
-                                
                                 val supplierMap = mutableMapOf<String, Any>()
                                 if (fullname.isNotBlank()) supplierMap["fullname"] = fullname
                                 if (phone.isNotBlank()) supplierMap["phone"] = phone

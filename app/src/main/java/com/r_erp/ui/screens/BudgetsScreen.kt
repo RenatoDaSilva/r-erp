@@ -46,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.r_erp.api.LocalToken
 import com.r_erp.api.SupabaseClient
 import com.r_erp.api.SupabaseBudget
 import com.r_erp.api.SupabaseBudgetItem
@@ -63,7 +64,8 @@ import kotlinx.coroutines.launch
 fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    val supabaseService = remember { SupabaseService.create() }
+    val token = LocalToken.current
+    val supabaseService = remember(token) { SupabaseService.create(token) }
     var budgets by remember { mutableStateOf<List<SupabaseBudget>>(emptyList()) }
     var clients by remember { mutableStateOf<List<SupabaseClient>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
@@ -100,7 +102,7 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
         }
     }
 
-    LaunchedEffect(Unit) {
+    LaunchedEffect(supabaseService) {
         loadBudgets()
     }
 
