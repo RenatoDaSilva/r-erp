@@ -61,10 +61,12 @@ fun ServicesScreen(onServiceClick: (Int) -> Unit) {
             services = supabaseService.getServices()
             isLoading = false
         } catch (e: Exception) {
-            errorMessage = if (e.message?.contains("401") == true) {
-                "Sessão expirada. Por favor, saia e entre novamente."
-            } else {
-                e.message ?: e.toString()
+            if (e.message?.contains("composition") != true) {
+                errorMessage = if (e.message?.contains("401") == true) {
+                    "Sessão expirada. Por favor, saia e entre novamente."
+                } else {
+                    e.message ?: e.toString()
+                }
             }
             isLoading = false
         }

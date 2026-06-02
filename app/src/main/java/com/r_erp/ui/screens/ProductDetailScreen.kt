@@ -66,7 +66,7 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
     val localeBR = Locale("pt", "BR")
     val currencyFormatter = NumberFormat.getCurrencyInstance(localeBR)
 
-    LaunchedEffect(productId) {
+    LaunchedEffect(productId, supabaseService) {
         try {
             // Load types from Supabase
             val supabaseTypes = supabaseService.getProductTypes()
@@ -96,7 +96,9 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
             }
             isLoading = false
         } catch (e: Exception) {
-            errorMessage = e.message ?: "Erro ao carregar dados"
+            if (e.message?.contains("composition") != true) {
+                errorMessage = e.message ?: "Erro ao carregar dados"
+            }
             isLoading = false
         }
     }

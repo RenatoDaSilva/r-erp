@@ -106,7 +106,9 @@ fun ReceivableDetailsScreen(receivableId: Int, onBack: () -> Unit) {
             }
             isLoading = false
         } catch (e: Exception) {
-            errorMessage = e.message ?: "Erro ao carregar dados"
+            if (e.message?.contains("composition") != true) {
+                errorMessage = e.message ?: "Erro ao carregar dados"
+            }
             isLoading = false
         }
     }

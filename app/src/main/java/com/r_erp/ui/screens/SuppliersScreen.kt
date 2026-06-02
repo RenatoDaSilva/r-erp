@@ -75,10 +75,12 @@ fun SuppliersScreen(onSupplierClick: (Int) -> Unit) {
                 suppliers = fetchedSuppliers.sortedBy { it.fullName?.lowercase() ?: "" }
                 isLoading = false
             } catch (e: Exception) {
-                errorMessage = if (e.message?.contains("401") == true) {
-                    "Sessão expirada. Por favor, saia e entre novamente."
-                } else {
-                    e.message ?: "Erro desconhecido"
+                if (e.message?.contains("composition") != true) {
+                    errorMessage = if (e.message?.contains("401") == true) {
+                        "Sessão expirada. Por favor, saia e entre novamente."
+                    } else {
+                        e.message ?: "Erro desconhecido"
+                    }
                 }
                 isLoading = false
             }

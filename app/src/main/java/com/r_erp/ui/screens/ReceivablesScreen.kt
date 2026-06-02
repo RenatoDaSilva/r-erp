@@ -106,7 +106,9 @@ fun ReceivablesScreen(onAddReceivable: () -> Unit, onReceivableClick: (Int) -> U
                 if (totalsList.isNotEmpty()) totals = totalsList[0]
                 isLoading = false
             } catch (e: Exception) {
-                errorMessage = e.message ?: e.toString()
+                if (e.message?.contains("composition") != true) {
+                    errorMessage = e.message ?: e.toString()
+                }
                 isLoading = false
             }
         }

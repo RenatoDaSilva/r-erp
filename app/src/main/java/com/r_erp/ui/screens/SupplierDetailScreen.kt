@@ -52,7 +52,7 @@ fun SupplierDetailScreen(supplierId: Int, onBack: () -> Unit) {
     var cpfCnpj by remember { mutableStateOf("") }
     var pix by remember { mutableStateOf("") }
 
-    LaunchedEffect(supplierId) {
+    LaunchedEffect(supplierId, supabaseService) {
         if (supplierId != -1) {
             try {
                 val fetchedSuppliers = supabaseService.getSupplier(idFilter = "eq.$supplierId")
@@ -74,7 +74,9 @@ fun SupplierDetailScreen(supplierId: Int, onBack: () -> Unit) {
 
                 isLoading = false
             } catch (e: Exception) {
-                errorMessage = e.message ?: "Erro ao carregar dados"
+                if (e.message?.contains("composition") != true) {
+                    errorMessage = e.message ?: "Erro ao carregar dados"
+                }
                 isLoading = false
             }
         }

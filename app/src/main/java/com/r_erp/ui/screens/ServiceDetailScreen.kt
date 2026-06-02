@@ -47,7 +47,7 @@ fun ServiceDetailScreen(serviceId: Int, onBack: () -> Unit) {
     var description by remember { mutableStateOf("") }
     var priceStr by remember { mutableStateOf("") }
 
-    LaunchedEffect(serviceId) {
+    LaunchedEffect(serviceId, supabaseService) {
         try {
             if (serviceId != -1) {
                 val fetchedServices = supabaseService.getService(idFilter = "eq.$serviceId")
@@ -63,7 +63,9 @@ fun ServiceDetailScreen(serviceId: Int, onBack: () -> Unit) {
             }
             isLoading = false
         } catch (e: Exception) {
-            errorMessage = e.message ?: "Erro ao carregar dados"
+            if (e.message?.contains("composition") != true) {
+                errorMessage = e.message ?: "Erro ao carregar dados"
+            }
             isLoading = false
         }
     }

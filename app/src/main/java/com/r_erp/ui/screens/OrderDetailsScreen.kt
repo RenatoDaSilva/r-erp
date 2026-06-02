@@ -118,7 +118,9 @@ fun OrderDetailsScreen(orderId: Int? = null, onBack: () -> Unit) {
             
             isLoading = false
         } catch (e: Exception) {
-            Toast.makeText(context, "Erro ao carregar dados: ${e.message}", Toast.LENGTH_LONG).show()
+            if (e.message?.contains("composition") != true) {
+                Toast.makeText(context, "Erro ao carregar dados: ${e.message}", Toast.LENGTH_LONG).show()
+            }
             isLoading = false
         }
     }

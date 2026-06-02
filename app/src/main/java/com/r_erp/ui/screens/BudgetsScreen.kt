@@ -96,7 +96,9 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
                 budgets = supabaseService.getBudgetsWithItems()
                 isLoading = false
             } catch (e: Exception) {
-                errorMessage = e.message ?: e.toString()
+                if (e.message?.contains("composition") != true) {
+                    errorMessage = e.message ?: e.toString()
+                }
                 isLoading = false
             }
         }

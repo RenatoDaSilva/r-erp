@@ -84,7 +84,9 @@ fun OrdersScreen(onAddOrder: () -> Unit, onOrderClick: (Int) -> Unit) {
             orders = supabaseService.getOrdersWithItems()
             isLoading = false
         } catch (e: Exception) {
-            errorMessage = e.message ?: e.toString()
+            if (e.message?.contains("composition") != true) {
+                errorMessage = e.message ?: e.toString()
+            }
             isLoading = false
         }
     }

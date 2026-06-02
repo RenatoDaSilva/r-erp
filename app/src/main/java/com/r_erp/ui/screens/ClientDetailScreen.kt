@@ -51,7 +51,7 @@ fun ClientDetailScreen(clientId: Int, onBack: () -> Unit) {
     var state by remember { mutableStateOf("") }
     var cpf by remember { mutableStateOf("") }
 
-    LaunchedEffect(clientId) {
+    LaunchedEffect(clientId, supabaseService) {
         if (clientId != -1) {
             try {
                 val fetchedClients = supabaseService.getClient(idFilter = "eq.$clientId")
@@ -72,7 +72,9 @@ fun ClientDetailScreen(clientId: Int, onBack: () -> Unit) {
 
                 isLoading = false
             } catch (e: Exception) {
-                errorMessage = e.message ?: "Erro ao carregar dados"
+                if (e.message?.contains("composition") != true) {
+                    errorMessage = e.message ?: "Erro ao carregar dados"
+                }
                 isLoading = false
             }
         }
