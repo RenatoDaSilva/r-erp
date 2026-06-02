@@ -157,11 +157,11 @@ object PdfUtils {
 
         // Items Table Header
         boldPaint.textSize = 10f
-        canvas.drawText("Qtd", margin, y, boldPaint)
+        canvas.drawText("Qtd.", margin, y, boldPaint)
         canvas.drawText("Descrição", margin + 50f, y, boldPaint)
         
         boldPaint.textAlign = Paint.Align.RIGHT
-        canvas.drawText("Preço", margin + 370f, y, boldPaint)
+        canvas.drawText("Preço unit.", margin + 370f, y, boldPaint)
         canvas.drawText("Desc.", margin + 450f, y, boldPaint)
         canvas.drawText("Total", pageWidth - margin, y, boldPaint)
         boldPaint.textAlign = Paint.Align.LEFT // Reset
@@ -356,11 +356,11 @@ object PdfUtils {
 
         // Items Table Header
         boldPaint.textSize = 10f
-        canvas.drawText("Qtd", margin, y, boldPaint)
+        canvas.drawText("Qtd.", margin, y, boldPaint)
         canvas.drawText("Descrição", margin + 50f, y, boldPaint)
         
         boldPaint.textAlign = Paint.Align.RIGHT
-        canvas.drawText("Preço", margin + 370f, y, boldPaint)
+        canvas.drawText("Preço unit.", margin + 370f, y, boldPaint)
         canvas.drawText("Desc.", margin + 450f, y, boldPaint)
         canvas.drawText("Total", pageWidth - margin, y, boldPaint)
         boldPaint.textAlign = Paint.Align.LEFT // Reset
@@ -396,7 +396,7 @@ object PdfUtils {
         // Footer: Right aligned
         paint.textAlign = Paint.Align.RIGHT
         val rightMargin = pageWidth - margin
-        canvas.drawText("Total Itens: ${String.format(localeBR, "%.2f", order.totalItems ?: 0.0)}", rightMargin, y, paint)
+        canvas.drawText("Total ítens: ${String.format(localeBR, "%.2f", order.totalItems ?: 0.0)}", rightMargin, y, paint)
         y += 20f
         canvas.drawText("Desconto: ${String.format(localeBR, "%.2f", order.discount ?: 0.0)}", rightMargin, y, paint)
         y += 20f
