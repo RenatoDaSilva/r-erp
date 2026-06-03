@@ -173,22 +173,39 @@ object PdfUtils {
         // Table Content
         paint.textSize = 10f
         budget.items?.forEach { item ->
-            if (y > 750f) { // Simple page break check (not fully implemented for multi-page)
-                // In a real app we would start a new page here
+            if (y > 750f) { 
+                // Simple page break check (not fully implemented for multi-page)
             }
-            canvas.drawText(String.format(localeBR, "%.2f", item.quantity ?: 0.0), margin, y, paint)
             
-            // Description might be long, truncate if necessary
+            val initialY = y
             val desc = item.description ?: ""
-            val truncatedDesc = if (desc.length > 40) desc.substring(0, 37) + "..." else desc
-            canvas.drawText(truncatedDesc, margin + 50f, y, paint)
+            val descWidth = 310f // Space between Desc column and Price column
+            val lines = wrapText(desc, paint, descWidth)
+            
+            // Draw item data on the first line
+            canvas.drawText(String.format(localeBR, "%.2f", item.quantity ?: 0.0), margin, y, paint)
             
             paint.textAlign = Paint.Align.RIGHT
             canvas.drawText(String.format(localeBR, "%.2f", item.price ?: 0.0), margin + 370f, y, paint)
             canvas.drawText(String.format(localeBR, "%.2f", item.discount ?: 0.0), margin + 450f, y, paint)
             canvas.drawText(String.format(localeBR, "%.2f", item.total ?: 0.0), pageWidth - margin, y, paint)
-            paint.textAlign = Paint.Align.LEFT // Reset
-            y += 20f
+            paint.textAlign = Paint.Align.LEFT
+            
+            // Draw description lines
+            lines.forEach { line ->
+                canvas.drawText(line, margin + 50f, y, paint)
+                y += 15f
+            }
+            
+            // Add a small gap between items if description was multi-line, 
+            // otherwise y already advanced by at least one line (15f).
+            // Let's ensure a minimum height per item row.
+            val rowHeight = y - initialY
+            if (rowHeight < 20f) {
+                y = initialY + 20f
+            } else {
+                y += 5f // Small extra gap after multi-line description
+            }
         }
 
         y += 20f
@@ -375,18 +392,33 @@ object PdfUtils {
             if (y > 750f) {
                 // In a real app we would start a new page here
             }
-            canvas.drawText(String.format(localeBR, "%.2f", item.quantity ?: 0.0), margin, y, paint)
-            
+
+            val initialY = y
             val desc = item.description ?: ""
-            val truncatedDesc = if (desc.length > 40) desc.substring(0, 37) + "..." else desc
-            canvas.drawText(truncatedDesc, margin + 50f, y, paint)
-            
+            val descWidth = 310f // Space between Desc column and Price column
+            val lines = wrapText(desc, paint, descWidth)
+
+            // Draw item data on the first line
+            canvas.drawText(String.format(localeBR, "%.2f", item.quantity ?: 0.0), margin, y, paint)
+
             paint.textAlign = Paint.Align.RIGHT
             canvas.drawText(String.format(localeBR, "%.2f", item.price ?: 0.0), margin + 370f, y, paint)
             canvas.drawText(String.format(localeBR, "%.2f", item.discount ?: 0.0), margin + 450f, y, paint)
             canvas.drawText(String.format(localeBR, "%.2f", item.total ?: 0.0), pageWidth - margin, y, paint)
-            paint.textAlign = Paint.Align.LEFT // Reset
-            y += 20f
+            paint.textAlign = Paint.Align.LEFT
+
+            // Draw description lines
+            lines.forEach { line ->
+                canvas.drawText(line, margin + 50f, y, paint)
+                y += 15f
+            }
+
+            val rowHeight = y - initialY
+            if (rowHeight < 20f) {
+                y = initialY + 20f
+            } else {
+                y += 5f
+            }
         }
 
         y += 20f
@@ -430,6 +462,32 @@ object PdfUtils {
         } else {
             shareFile(context, file, "Compartilhar Pedido")
         }
+    }
+
+    private fun wrapText(text: String, paint: Paint, maxWidth: Float): List<String> {
+        val result = mutableListOf<String>()
+        val words = text.split(" ")
+        var currentLine = StringBuilder()
+
+        for (word in words) {
+            val testLine = if (currentLine.isEmpty()) word else "${currentLine} $word"
+            val width = paint.measureText(testLine)
+            if (width <= maxWidth) {
+                currentLine.append(if (currentLine.isEmpty()) word else " $word")
+            } else {
+                if (currentLine.isNotEmpty()) {
+                    result.add(currentLine.toString())
+                    currentLine = StringBuilder(word)
+                } else {
+                    // Word itself is longer than maxWidth, force break it
+                    result.add(word)
+                }
+            }
+        }
+        if (currentLine.isNotEmpty()) {
+            result.add(currentLine.toString())
+        }
+        return if (result.isEmpty()) listOf("") else result
     }
 
     private fun formatDate(dateStr: String?): String {
