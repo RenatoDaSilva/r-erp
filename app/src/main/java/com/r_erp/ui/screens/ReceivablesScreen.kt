@@ -25,8 +25,11 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DatePicker
+import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -34,8 +37,10 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SelectableDates
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -62,6 +67,7 @@ import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReceivablesScreen(onAddReceivable: () -> Unit, onReceivableClick: (Int) -> Unit) {
     val context = LocalContext.current
@@ -80,8 +86,9 @@ fun ReceivablesScreen(onAddReceivable: () -> Unit, onReceivableClick: (Int) -> U
     var showOpen by remember { mutableStateOf(true) }
     var showPaid by remember { mutableStateOf(true) }
     
-    // Dialog State
+    // Dialog States
     var showBaixarDialog by remember { mutableStateOf<SupabaseReceivable?>(null) }
+    var showDatePickerFor by remember { mutableStateOf<SupabaseReceivable?>(null) }
     var paidValueInput by remember { mutableStateOf("") }
 
     val clientMap = remember(clients) { clients.associate { it.id to it.fullName } }
@@ -198,6 +205,11 @@ fun ReceivablesScreen(onAddReceivable: () -> Unit, onReceivableClick: (Int) -> U
                                     showBaixarDialog = receivable
                                     paidValueInput = String.format(Locale.US, "%.2f", receivable.value ?: 0.0)
                                 },
+                                onDateLongClick = {
+                                    if (receivable.paidAt == null) {
+                                        showDatePickerFor = receivable
+                                    }
+                                },
                                 onPrint = {
                                     // Filtered records are those shown in the screen
                                     PdfUtils.generateAndShareReceivablesReport(context, filteredReceivables, clientMap, totals)
@@ -254,6 +266,58 @@ fun ReceivablesScreen(onAddReceivable: () -> Unit, onReceivableClick: (Int) -> U
             }
         )
     }
+
+    if (showDatePickerFor != null) {
+        val rec = showDatePickerFor!!
+        val initialDate = try {
+            SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(rec.dueDate?.take(10) ?: "")?.time ?: System.currentTimeMillis()
+        } catch (e: Exception) {
+            System.currentTimeMillis()
+        }
+
+        val datePickerState = rememberDatePickerState(
+            initialSelectedDateMillis = initialDate,
+            selectableDates = object : SelectableDates {
+                override fun isSelectableDate(utcTimeMillis: Long): Boolean {
+                    // Normalize current time to start of day in UTC for comparison
+                    val calendar = java.util.Calendar.getInstance(java.util.TimeZone.getTimeZone("UTC")).apply {
+                        set(java.util.Calendar.HOUR_OF_DAY, 0)
+                        set(java.util.Calendar.MINUTE, 0)
+                        set(java.util.Calendar.SECOND, 0)
+                        set(java.util.Calendar.MILLISECOND, 0)
+                    }
+                    return utcTimeMillis >= calendar.timeInMillis
+                }
+            }
+        )
+
+        DatePickerDialog(
+            onDismissRequest = { showDatePickerFor = null },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let { newDateMillis ->
+                        scope.launch {
+                            try {
+                                val apiDateFormat = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                                val newDateStr = apiDateFormat.format(Date(newDateMillis))
+                                supabaseService.updateReceivable(idFilter = "eq.${rec.id}", receivable = mapOf("due_date" to newDateStr))
+                                loadData()
+                                Toast.makeText(context, "Data de vencimento atualizada!", Toast.LENGTH_SHORT).show()
+                            } catch (e: Exception) {
+                                Toast.makeText(context, "Erro ao atualizar: ${e.message}", Toast.LENGTH_LONG).show()
+                            }
+                        }
+                    }
+                    showDatePickerFor = null
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDatePickerFor = null }) { Text("Cancelar") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
+        }
+    }
 }
 
 @OptIn(ExperimentalFoundationApi::class)
@@ -263,6 +327,7 @@ fun ReceivableItem(
     clientName: String,
     onClick: () -> Unit,
     onBaixar: () -> Unit,
+    onDateLongClick: () -> Unit,
     onPrint: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -297,7 +362,14 @@ fun ReceivableItem(
                 Spacer(modifier = Modifier.height(8.dp))
                 
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                    Text(text = "Vencimento: ${formatDate(receivable.dueDate)}", style = MaterialTheme.typography.bodySmall)
+                    Text(
+                        text = "Vencimento: ${formatDate(receivable.dueDate)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.combinedClickable(
+                            onClick = {}, // Do nothing on click to allow card to handle it or just be empty
+                            onLongClick = onDateLongClick
+                        )
+                    )
                     if (receivable.paidAt != null) {
                         Column(horizontalAlignment = Alignment.End) {
                             Text(text = "Pago em: ${formatDate(receivable.paidAt)}", style = MaterialTheme.typography.bodySmall, color = Color(0xFF4CAF50))
