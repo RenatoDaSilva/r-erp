@@ -44,6 +44,8 @@ fun SupplierDetailScreen(supplierId: Int, onBack: () -> Unit) {
     var isSaving by remember { mutableStateOf(value = false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    var isInitialized by remember { mutableStateOf(false) }
+
     // Editable states
     var fullname by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -55,32 +57,34 @@ fun SupplierDetailScreen(supplierId: Int, onBack: () -> Unit) {
     var pix by remember { mutableStateOf("") }
 
     LaunchedEffect(supplierId, supabaseService) {
-        if (supplierId != -1) {
-            try {
-                val fetchedSuppliers = supabaseService.getSupplier(idFilter = "eq.$supplierId")
+        try {
+            if (!isInitialized) {
+                if (supplierId != -1) {
+                    val fetchedSuppliers = supabaseService.getSupplier(idFilter = "eq.$supplierId")
 
-                if (fetchedSuppliers.isNotEmpty()) {
-                    val fetchedSupplier = fetchedSuppliers[0]
-                    // Initialize states
-                    fullname = fetchedSupplier.fullName ?: ""
-                    phone = fetchedSupplier.phone ?: ""
-                    email = fetchedSupplier.email ?: ""
-                    address = fetchedSupplier.address ?: ""
-                    city = fetchedSupplier.city ?: ""
-                    state = fetchedSupplier.state ?: ""
-                    cpfCnpj = fetchedSupplier.cpfCnpj ?: ""
-                    pix = fetchedSupplier.pix ?: ""
-                } else {
-                    errorMessage = "Fornecedor não encontrado"
+                    if (fetchedSuppliers.isNotEmpty()) {
+                        val fetchedSupplier = fetchedSuppliers[0]
+                        // Initialize states
+                        fullname = fetchedSupplier.fullName ?: ""
+                        phone = fetchedSupplier.phone ?: ""
+                        email = fetchedSupplier.email ?: ""
+                        address = fetchedSupplier.address ?: ""
+                        city = fetchedSupplier.city ?: ""
+                        state = fetchedSupplier.state ?: ""
+                        cpfCnpj = fetchedSupplier.cpfCnpj ?: ""
+                        pix = fetchedSupplier.pix ?: ""
+                    } else {
+                        errorMessage = "Fornecedor não encontrado"
+                    }
                 }
-
-                isLoading = false
-            } catch (e: Exception) {
-                if (e.message?.contains("composition") != true) {
-                    errorMessage = e.message ?: "Erro ao carregar dados"
-                }
-                isLoading = false
+                isInitialized = true
             }
+            isLoading = false
+        } catch (e: Exception) {
+            if (e.message?.contains("composition") != true) {
+                errorMessage = e.message ?: "Erro ao carregar dados"
+            }
+            isLoading = false
         }
     }
 
