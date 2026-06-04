@@ -3,8 +3,13 @@ package com.r_erp.api
 import com.r_erp.BuildConfig
 import com.google.gson.GsonBuilder
 import com.google.gson.annotations.SerializedName
+import com.r_erp.utils.SessionManager
+import kotlinx.coroutines.runBlocking
+import okhttp3.Authenticator
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Route
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
@@ -17,6 +22,7 @@ import retrofit2.http.Query
 import androidx.compose.runtime.compositionLocalOf
 
 val LocalToken = compositionLocalOf { "" }
+val LocalSessionManager = compositionLocalOf<SessionManager?> { null }
 
 data class SupabaseClient(
     val id: Int? = null,
@@ -171,6 +177,7 @@ data class SupabaseReceivableTotal(
 
 data class AuthResponse(
     @SerializedName("access_token") val accessToken: String,
+    @SerializedName("refresh_token") val refreshToken: String? = null,
     val user: SupabaseUser
 )
 
@@ -186,6 +193,9 @@ interface SupabaseService {
 
     @POST("https://euzmbicrbjpgcyrojvdm.supabase.co/auth/v1/token?grant_type=password")
     suspend fun signIn(@Body body: Map<String, String>): Response<AuthResponse>
+
+    @POST("https://euzmbicrbjpgcyrojvdm.supabase.co/auth/v1/token?grant_type=refresh_token")
+    suspend fun refreshToken(@Body body: Map<String, String>): Response<AuthResponse>
 
     @GET("budgets_with_items")
     suspend fun getBudgetsWithItems(): List<SupabaseBudget>
@@ -337,7 +347,7 @@ interface SupabaseService {
         
         var currentToken: String? = null
 
-        fun create(token: String? = null): SupabaseService {
+        fun create(token: String? = null, sessionManager: SessionManager? = null): SupabaseService {
             val authInterceptor = Interceptor { chain ->
                 val requestBuilder = chain.request().newBuilder()
                     .header("Content-Type", "application/json")
@@ -353,17 +363,48 @@ interface SupabaseService {
                 requestBuilder.header("Authorization", "Bearer $finalToken")
                 
                 val request = requestBuilder.build()
-                val response = chain.proceed(request)
-                
-                if (response.code == 401) {
-                    android.util.Log.e("SupabaseService", "Unauthorized (401) for ${request.url} using token prefix: ${finalToken.take(10)}...")
+                chain.proceed(request)
+            }
+
+            val authenticator = object : Authenticator {
+                override fun authenticate(route: Route?, response: okhttp3.Response): Request? {
+                    if (sessionManager == null) return null
+                    
+                    // Only try to refresh once
+                    if (response.priorResponse != null) return null
+
+                    return runBlocking {
+                        val refreshToken = sessionManager.getRefreshToken()
+                        if (refreshToken != null) {
+                            try {
+                                // Create a separate service instance for refresh to avoid loops
+                                val refreshService = create() 
+                                val refreshResponse = refreshService.refreshToken(mapOf("refresh_token" to refreshToken))
+                                
+                                val newToken = refreshResponse.body()?.accessToken
+                                if (newToken != null) {
+                                    sessionManager.updateAccessToken(newToken)
+                                    currentToken = newToken
+                                    
+                                    response.request.newBuilder()
+                                        .header("Authorization", "Bearer $newToken")
+                                        .build()
+                                } else {
+                                    null
+                                }
+                            } catch (e: Exception) {
+                                null
+                            }
+                        } else {
+                            null
+                        }
+                    }
                 }
-                
-                response
             }
 
             val client = OkHttpClient.Builder()
                 .addInterceptor(authInterceptor)
+                .authenticator(authenticator)
                 .build()
 
             val gson = GsonBuilder()

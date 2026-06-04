@@ -49,6 +49,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.LocalToken
+import com.r_erp.api.LocalSessionManager
 import com.r_erp.api.SupabaseService
 import com.r_erp.ui.theme.RerpTheme
 import com.r_erp.ui.screens.*
@@ -73,7 +74,10 @@ class MainActivity : ComponentActivity() {
                     }
                 } else if (token != "") {
                     SupabaseService.currentToken = token
-                    CompositionLocalProvider(LocalToken provides token!!) {
+                    CompositionLocalProvider(
+                        LocalToken provides token!!,
+                        LocalSessionManager provides sessionManager
+                    ) {
                         MainScreen(sessionManager)
                     }
                 } else {

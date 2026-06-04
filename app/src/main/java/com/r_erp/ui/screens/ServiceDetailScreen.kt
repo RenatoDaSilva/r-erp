@@ -30,6 +30,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.SupabaseService
 import com.r_erp.api.LocalToken
+import com.r_erp.api.LocalSessionManager
 import kotlinx.coroutines.launch
 import java.util.Locale
 
@@ -38,7 +39,8 @@ fun ServiceDetailScreen(serviceId: Int, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val token = LocalToken.current
-    val supabaseService = remember(token) { SupabaseService.create(token) }
+    val sessionManager = LocalSessionManager.current
+    val supabaseService = remember(token) { SupabaseService.create(token, sessionManager) }
     var isLoading by remember { mutableStateOf(value = true) }
     var isSaving by remember { mutableStateOf(value = false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }

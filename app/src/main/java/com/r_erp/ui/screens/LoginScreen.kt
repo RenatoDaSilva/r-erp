@@ -85,7 +85,11 @@ fun LoginScreen(sessionManager: SessionManager, onLoginSuccess: () -> Unit) {
                             if (response.isSuccessful) {
                                 val authResponse = response.body()
                                 if (authResponse != null) {
-                                    sessionManager.saveSession(authResponse.accessToken, authResponse.user.email)
+                                    sessionManager.saveSession(
+                                        authResponse.accessToken,
+                                        authResponse.refreshToken,
+                                        authResponse.user.email
+                                    )
                                     onLoginSuccess()
                                 }
                             } else {

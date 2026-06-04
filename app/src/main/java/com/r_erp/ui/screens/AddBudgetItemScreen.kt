@@ -46,6 +46,7 @@ import com.r_erp.api.SupabaseProduct
 import com.r_erp.api.SupabaseServiceItem
 import com.r_erp.api.SupabaseBudgetItem
 import com.r_erp.api.LocalToken
+import com.r_erp.api.LocalSessionManager
 import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -56,7 +57,8 @@ fun AddBudgetItemScreen(
 ) {
     val context = LocalContext.current
     val token = LocalToken.current
-    val supabaseService = remember(token) { SupabaseService.create(token) }
+    val sessionManager = LocalSessionManager.current
+    val supabaseService = remember(token) { SupabaseService.create(token, sessionManager) }
 
     var isLoading by remember { mutableStateOf(true) }
     var isService by remember { mutableStateOf(false) }
