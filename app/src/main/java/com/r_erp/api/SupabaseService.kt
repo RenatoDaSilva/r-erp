@@ -51,6 +51,7 @@ data class SupabaseProduct(
     val price: Double? = null,
     val stock: Double? = null,
     val cost: Double? = null,
+    @SerializedName("generates_stock") val generatesStock: Boolean? = null,
     @SerializedName("created_at") val createdAt: String? = null
 )
 

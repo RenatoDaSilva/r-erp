@@ -4,6 +4,7 @@ import android.widget.Toast
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -12,6 +13,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -56,6 +58,7 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
     var priceStr by remember { mutableStateOf("") }
     var stockStr by remember { mutableStateOf("") }
     var costStr by remember { mutableStateOf("") }
+    var generatesStock by remember { mutableStateOf(true) }
 
     // Lists for ComboBoxes
     var typeOptions by remember { mutableStateOf<List<String>>(emptyList()) }
@@ -86,6 +89,7 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
                     priceStr = String.format(Locale.US, "%.2f", fetchedProduct.price ?: 0.0)
                     stockStr = String.format(Locale.US, "%.2f", fetchedProduct.stock ?: 0.0)
                     costStr = String.format(Locale.US, "%.2f", fetchedProduct.cost ?: 0.0)
+                    generatesStock = fetchedProduct.generatesStock ?: true
                 } else {
                     errorMessage = "Produto não encontrado"
                 }
@@ -230,6 +234,14 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
                     modifier = Modifier.fillMaxWidth()
                 )
 
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Checkbox(
+                        checked = generatesStock,
+                        onCheckedChange = { generatesStock = it }
+                    )
+                    Text(text = "Controla estoque")
+                }
+
                 Spacer(modifier = Modifier.height(16.dp))
 
                 Button(
@@ -237,8 +249,6 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
                         isSaving = true
                         scope.launch {
                             try {
-                                val supabaseService = SupabaseService.create()
-                                
                                 val productMap = mutableMapOf<String, Any>()
                                 if (description.isNotBlank()) productMap["description"] = description
                                 if (type.isNotBlank()) productMap["type"] = type
@@ -252,6 +262,8 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
                                 
                                 val c = costStr.toDoubleOrNull() ?: 0.0
                                 productMap["cost"] = c
+
+                                productMap["generates_stock"] = generatesStock
                                 
                                 if (productId == -1) {
                                     val response = supabaseService.createProduct(product = productMap)
