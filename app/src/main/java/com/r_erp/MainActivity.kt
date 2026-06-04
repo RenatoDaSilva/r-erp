@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
+import androidx.compose.material.icons.filled.AttachMoney
 import androidx.compose.material.icons.filled.Build
 import androidx.compose.material.icons.filled.Business
 import androidx.compose.material.icons.filled.Description
@@ -107,9 +108,9 @@ fun MainScreen(sessionManager: SessionManager) {
         NavigationItem("Produtos", Icons.Default.ShoppingCart),
         NavigationItem("Serviços", Icons.Default.Build),
         NavigationItem("Compras", Icons.Default.LocalMall),
-        NavigationItem("Receber", Icons.Default.LocalMall),
         NavigationItem("Orçamentos", Icons.Default.Description),
         NavigationItem("Pedidos", Icons.AutoMirrored.Filled.Assignment),
+        NavigationItem("Receber", Icons.Default.AttachMoney),
     )
     var selectedItemIndex by rememberSaveable { mutableIntStateOf(0) }
     var selectedId by rememberSaveable { mutableStateOf<Int?>(null) }
