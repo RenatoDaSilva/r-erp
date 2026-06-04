@@ -54,6 +54,8 @@ import com.r_erp.api.LocalToken
 import com.r_erp.api.LocalSessionManager
 import com.r_erp.api.SupabaseBudgetItem
 import com.r_erp.api.SupabaseBudgetItemRequest
+import com.r_erp.api.SupabaseProduct
+import com.r_erp.api.SupabaseServiceItem
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -83,6 +85,8 @@ fun BudgetDetailsScreen(budgetId: Int? = null, onBack: () -> Unit) {
     
     // Options lists
     var clients by remember { mutableStateOf<List<SupabaseClient>>(emptyList()) }
+    var allProducts by remember { mutableStateOf<List<SupabaseProduct>>(emptyList()) }
+    var allServices by remember { mutableStateOf<List<SupabaseServiceItem>>(emptyList()) }
     var clientExpanded by remember { mutableStateOf(false) }
     var showDatePicker by remember { mutableStateOf(false) }
     
@@ -94,8 +98,10 @@ fun BudgetDetailsScreen(budgetId: Int? = null, onBack: () -> Unit) {
 
     LaunchedEffect(supabaseService) {
         try {
-            // Load Clients first
+            // Load master data
             clients = supabaseService.getClients().sortedBy { it.fullName?.lowercase() ?: "" }
+            allProducts = supabaseService.getProducts()
+            allServices = supabaseService.getServices()
 
             if (budgetId == null) {
                 // Creation mode: Get Next Sequence ID
@@ -255,16 +261,27 @@ fun BudgetDetailsScreen(budgetId: Int? = null, onBack: () -> Unit) {
 
                 // Summary of items
                 budgetItems.forEachIndexed { index, item ->
+                    val displayDescription = item.description 
+                        ?: allProducts.find { it.id == item.productId }?.description 
+                        ?: allServices.find { it.id == item.serviceId }?.description 
+                        ?: "Item desconhecido"
+                    
+                    val itemTotal = if ((item.total ?: 0.0) == 0.0) {
+                        ((item.quantity ?: 0.0) * (item.price ?: 0.0)) - (item.discount ?: 0.0)
+                    } else {
+                        item.total!!
+                    }
+
                     Column(modifier = Modifier.fillMaxWidth()) {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
                             Column(modifier = Modifier.weight(1f)) {
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text(text = item.description ?: "", fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                                    Text(text = displayDescription, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
                                     Text(text = "x${String.format(Locale.US, "%.2f", item.quantity ?: 0.0)}")
                                 }
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                     Text(text = "Preço: ${String.format(Locale.US, "%.2f", item.price ?: 0.0)}", style = MaterialTheme.typography.bodySmall)
-                                    Text(text = "Total: ${String.format(Locale.US, "%.2f", item.total ?: 0.0)}", fontWeight = FontWeight.Bold)
+                                    Text(text = "Total: ${String.format(Locale.US, "%.2f", itemTotal)}", fontWeight = FontWeight.Bold)
                                 }
                             }
                             IconButton(onClick = { budgetItems.removeAt(index) }) {
