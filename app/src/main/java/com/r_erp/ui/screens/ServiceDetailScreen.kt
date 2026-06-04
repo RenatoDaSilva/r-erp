@@ -45,23 +45,28 @@ fun ServiceDetailScreen(serviceId: Int, onBack: () -> Unit) {
     var isSaving by remember { mutableStateOf(value = false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    var isInitialized by remember { mutableStateOf(false) }
+
     // Editable states
     var description by remember { mutableStateOf("") }
     var priceStr by remember { mutableStateOf("") }
 
     LaunchedEffect(serviceId, supabaseService) {
         try {
-            if (serviceId != -1) {
-                val fetchedServices = supabaseService.getService(idFilter = "eq.$serviceId")
-                if (fetchedServices.isNotEmpty()) {
-                    val fetchedService = fetchedServices[0]
-                    description = fetchedService.description ?: ""
-                    priceStr = String.format(Locale.US, "%.2f", fetchedService.price ?: 0.0)
+            if (!isInitialized) {
+                if (serviceId != -1) {
+                    val fetchedServices = supabaseService.getService(idFilter = "eq.$serviceId")
+                    if (fetchedServices.isNotEmpty()) {
+                        val fetchedService = fetchedServices[0]
+                        description = fetchedService.description ?: ""
+                        priceStr = String.format(Locale.US, "%.2f", fetchedService.price ?: 0.0)
+                    } else {
+                        errorMessage = "Serviço não encontrado"
+                    }
                 } else {
-                    errorMessage = "Serviço não encontrado"
+                    priceStr = "0.00"
                 }
-            } else {
-                priceStr = "0.00"
+                isInitialized = true
             }
             isLoading = false
         } catch (e: Exception) {

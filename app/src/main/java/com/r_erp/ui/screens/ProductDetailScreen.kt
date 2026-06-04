@@ -68,37 +68,41 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
     var typeExpanded by remember { mutableStateOf(false) }
     var unitExpanded by remember { mutableStateOf(false) }
 
+    var isInitialized by remember { mutableStateOf(false) }
+
     val localeBR = Locale("pt", "BR")
     val currencyFormatter = NumberFormat.getCurrencyInstance(localeBR)
 
     LaunchedEffect(productId, supabaseService) {
         try {
-            // Load types from Supabase
+            // Load options (always safe to reload)
             val supabaseTypes = supabaseService.getProductTypes()
             typeOptions = supabaseTypes.mapNotNull { it.type }
             
-            // Load units from Supabase
             val supabaseUnits = supabaseService.getProductUnits()
             unitOptions = supabaseUnits.mapNotNull { it.unit }
 
-            if (productId != -1) {
-                val fetchedProducts = supabaseService.getProduct(idFilter = "eq.$productId")
-                if (fetchedProducts.isNotEmpty()) {
-                    val fetchedProduct = fetchedProducts[0]
-                    description = fetchedProduct.description ?: ""
-                    type = fetchedProduct.type ?: ""
-                    unit = fetchedProduct.unit ?: ""
-                    priceStr = String.format(Locale.US, "%.2f", fetchedProduct.price ?: 0.0)
-                    stockStr = String.format(Locale.US, "%.2f", fetchedProduct.stock ?: 0.0)
-                    costStr = String.format(Locale.US, "%.2f", fetchedProduct.cost ?: 0.0)
-                    generatesStock = fetchedProduct.generatesStock ?: true
+            if (!isInitialized) {
+                if (productId != -1) {
+                    val fetchedProducts = supabaseService.getProduct(idFilter = "eq.$productId")
+                    if (fetchedProducts.isNotEmpty()) {
+                        val fetchedProduct = fetchedProducts[0]
+                        description = fetchedProduct.description ?: ""
+                        type = fetchedProduct.type ?: ""
+                        unit = fetchedProduct.unit ?: ""
+                        priceStr = String.format(Locale.US, "%.2f", fetchedProduct.price ?: 0.0)
+                        stockStr = String.format(Locale.US, "%.2f", fetchedProduct.stock ?: 0.0)
+                        costStr = String.format(Locale.US, "%.2f", fetchedProduct.cost ?: 0.0)
+                        generatesStock = fetchedProduct.generatesStock ?: true
+                    } else {
+                        errorMessage = "Produto não encontrado"
+                    }
                 } else {
-                    errorMessage = "Produto não encontrado"
+                    priceStr = "0.00"
+                    stockStr = "0.00"
+                    costStr = "0.00"
                 }
-            } else {
-                priceStr = "0.00"
-                stockStr = "0.00"
-                costStr = "0.00"
+                isInitialized = true
             }
             isLoading = false
         } catch (e: Exception) {

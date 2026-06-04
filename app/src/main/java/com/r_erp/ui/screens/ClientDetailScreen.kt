@@ -44,6 +44,8 @@ fun ClientDetailScreen(clientId: Int, onBack: () -> Unit) {
     var isSaving by remember { mutableStateOf(value = false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
+    var isInitialized by remember { mutableStateOf(false) }
+
     // Editable states
     var fullname by remember { mutableStateOf("") }
     var phone by remember { mutableStateOf("") }
@@ -54,31 +56,33 @@ fun ClientDetailScreen(clientId: Int, onBack: () -> Unit) {
     var cpf by remember { mutableStateOf("") }
 
     LaunchedEffect(clientId, supabaseService) {
-        if (clientId != -1) {
-            try {
-                val fetchedClients = supabaseService.getClient(idFilter = "eq.$clientId")
-                
-                if (fetchedClients.isNotEmpty()) {
-                    val fetchedClient = fetchedClients[0]
-                    // Initialize states
-                    fullname = fetchedClient.fullName ?: ""
-                    phone = fetchedClient.phone ?: ""
-                    email = fetchedClient.email ?: ""
-                    address = fetchedClient.address ?: ""
-                    city = fetchedClient.city ?: ""
-                    state = fetchedClient.state ?: ""
-                    cpf = fetchedClient.cpf ?: ""
-                } else {
-                    errorMessage = "Cliente não encontrado"
+        try {
+            if (!isInitialized) {
+                if (clientId != -1) {
+                    val fetchedClients = supabaseService.getClient(idFilter = "eq.$clientId")
+                    
+                    if (fetchedClients.isNotEmpty()) {
+                        val fetchedClient = fetchedClients[0]
+                        // Initialize states
+                        fullname = fetchedClient.fullName ?: ""
+                        phone = fetchedClient.phone ?: ""
+                        email = fetchedClient.email ?: ""
+                        address = fetchedClient.address ?: ""
+                        city = fetchedClient.city ?: ""
+                        state = fetchedClient.state ?: ""
+                        cpf = fetchedClient.cpf ?: ""
+                    } else {
+                        errorMessage = "Cliente não encontrado"
+                    }
                 }
-
-                isLoading = false
-            } catch (e: Exception) {
-                if (e.message?.contains("composition") != true) {
-                    errorMessage = e.message ?: "Erro ao carregar dados"
-                }
-                isLoading = false
+                isInitialized = true
             }
+            isLoading = false
+        } catch (e: Exception) {
+            if (e.message?.contains("composition") != true) {
+                errorMessage = e.message ?: "Erro ao carregar dados"
+            }
+            isLoading = false
         }
     }
 

@@ -69,6 +69,8 @@ fun ReceivableDetailsScreen(receivableId: Int, onBack: () -> Unit) {
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var errorDialogMessage by remember { mutableStateOf<String?>(null) }
 
+    var isInitialized by remember { mutableStateOf(false) }
+
     // Editable states
     var selectedClient by remember { mutableStateOf<SupabaseClient?>(null) }
     var origin by remember { mutableStateOf("") }
@@ -87,24 +89,27 @@ fun ReceivableDetailsScreen(receivableId: Int, onBack: () -> Unit) {
         try {
             clients = supabaseService.getClients().sortedBy { it.fullName?.lowercase() ?: "" }
             
-            if (receivableId != -1) {
-                val fetched = supabaseService.getReceivable(idFilter = "eq.$receivableId")
-                if (fetched.isNotEmpty()) {
-                    val rec = fetched[0]
-                    selectedClient = clients.find { it.id == rec.clientId }
-                    origin = rec.origin ?: ""
-                    orderIdStored = rec.orderId
-                    valueStr = String.format(Locale.US, "%.2f", rec.value ?: 0.0)
-                    
-                    val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
-                    rec.dueDate?.let {
-                        dueAtMillis = sdf.parse(it.take(10))?.time ?: dueAtMillis
+            if (!isInitialized) {
+                if (receivableId != -1) {
+                    val fetched = supabaseService.getReceivable(idFilter = "eq.$receivableId")
+                    if (fetched.isNotEmpty()) {
+                        val rec = fetched[0]
+                        selectedClient = clients.find { it.id == rec.clientId }
+                        origin = rec.origin ?: ""
+                        orderIdStored = rec.orderId
+                        valueStr = String.format(Locale.US, "%.2f", rec.value ?: 0.0)
+                        
+                        val sdf = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                        rec.dueDate?.let {
+                            dueAtMillis = sdf.parse(it.take(10))?.time ?: dueAtMillis
+                        }
+                    } else {
+                        errorMessage = "Título não encontrado"
                     }
                 } else {
-                    errorMessage = "Título não encontrado"
+                    valueStr = "0.00"
                 }
-            } else {
-                valueStr = "0.00"
+                isInitialized = true
             }
             isLoading = false
         } catch (e: Exception) {
