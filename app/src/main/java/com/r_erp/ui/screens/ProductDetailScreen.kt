@@ -93,7 +93,7 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
                         priceStr = String.format(Locale.US, "%.2f", fetchedProduct.price ?: 0.0)
                         stockStr = String.format(Locale.US, "%.2f", fetchedProduct.stock ?: 0.0)
                         costStr = String.format(Locale.US, "%.2f", fetchedProduct.cost ?: 0.0)
-                        generatesStock = fetchedProduct.generatesStock ?: true
+                        generatesStock = fetchedProduct.generatesStock ?: false
                     } else {
                         errorMessage = "Produto não encontrado"
                     }
