@@ -49,6 +49,7 @@ import com.r_erp.api.SupabaseService
 import com.r_erp.api.AgendaItem
 import com.r_erp.api.SupabaseClient
 import com.r_erp.api.LocalToken
+import com.r_erp.api.LocalSessionManager
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Calendar
@@ -62,8 +63,9 @@ fun AddAgendaItemScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val token = LocalToken.current
+    val sessionManager = LocalSessionManager.current
     val apiService = remember { ApiService.create() }
-    val supabaseService = remember(token) { SupabaseService.create(token) }
+    val supabaseService = remember(token) { SupabaseService.create(token, sessionManager) }
 
     var clients by remember { mutableStateOf<List<SupabaseClient>>(emptyList()) }
     var isLoadingClients by remember { mutableStateOf(true) }

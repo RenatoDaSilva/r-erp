@@ -60,6 +60,7 @@ import com.r_erp.api.SupabaseReceivable
 import com.r_erp.api.SupabaseReceivableTotal
 import com.r_erp.api.SupabaseService
 import com.r_erp.api.LocalToken
+import com.r_erp.api.LocalSessionManager
 import com.r_erp.utils.PdfUtils
 import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
@@ -73,7 +74,8 @@ fun ReceivablesScreen(onAddReceivable: () -> Unit, onReceivableClick: (Int) -> U
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val token = LocalToken.current
-    val supabaseService = remember(token) { SupabaseService.create(token) }
+    val sessionManager = LocalSessionManager.current
+    val supabaseService = remember(token) { SupabaseService.create(token, sessionManager) }
     
     var receivables by remember { mutableStateOf<List<SupabaseReceivable>>(emptyList()) }
     var clients by remember { mutableStateOf<List<SupabaseClient>>(emptyList()) }

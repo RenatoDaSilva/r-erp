@@ -43,6 +43,7 @@ import androidx.compose.ui.unit.dp
 import com.r_erp.api.SupabaseService
 import com.r_erp.api.SupabaseClient
 import com.r_erp.api.LocalToken
+import com.r_erp.api.LocalSessionManager
 import kotlinx.coroutines.launch
 
 @Composable
@@ -50,12 +51,13 @@ fun ClientsScreen(onClientClick: (Int) -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val token = LocalToken.current
+    val sessionManager = LocalSessionManager.current
     var clients by remember { mutableStateOf<List<SupabaseClient>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(value = true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val supabaseService = remember(token) { SupabaseService.create(token) }
+    val supabaseService = remember(token) { SupabaseService.create(token, sessionManager) }
 
     val filteredClients = remember(searchQuery, clients) {
         if (searchQuery.isBlank()) {

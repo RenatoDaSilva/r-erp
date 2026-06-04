@@ -48,6 +48,7 @@ import androidx.core.text.HtmlCompat
 import com.r_erp.api.ApiService
 import com.r_erp.api.AgendaItem
 import com.r_erp.api.LocalToken
+import com.r_erp.api.LocalSessionManager
 import com.r_erp.api.SupabaseService
 import java.text.SimpleDateFormat
 import java.util.Date
@@ -58,6 +59,7 @@ import java.util.TimeZone
 @Composable
 fun AgendaScreen(onAddAgendaItem: () -> Unit) {
     val token = LocalToken.current
+    val sessionManager = LocalSessionManager.current
     var selectedDateMillis by remember { mutableStateOf(System.currentTimeMillis()) }
     var showDatePicker by remember { mutableStateOf(false) }
     var agendaItems by remember { mutableStateOf<List<AgendaItem>>(emptyList()) }
@@ -65,7 +67,7 @@ fun AgendaScreen(onAddAgendaItem: () -> Unit) {
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var offsetX by remember { mutableFloatStateOf(0f) }
 
-    val supabaseService = remember(token) { SupabaseService.create(token) }
+    val supabaseService = remember(token) { SupabaseService.create(token, sessionManager) }
 
     val apiDateFormatter = remember { 
         SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).apply {

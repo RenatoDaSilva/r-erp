@@ -51,6 +51,7 @@ import androidx.compose.ui.unit.dp
 import com.r_erp.api.SupabaseClient
 import com.r_erp.api.SupabaseService
 import com.r_erp.api.LocalToken
+import com.r_erp.api.LocalSessionManager
 import com.r_erp.api.SupabaseBudgetItem
 import com.r_erp.api.SupabaseBudgetItemRequest
 import kotlinx.coroutines.launch
@@ -65,7 +66,8 @@ fun BudgetDetailsScreen(budgetId: Int? = null, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val token = LocalToken.current
-    val supabaseService = remember(token) { SupabaseService.create(token) }
+    val sessionManager = LocalSessionManager.current
+    val supabaseService = remember(token) { SupabaseService.create(token, sessionManager) }
 
     var isLoading by remember { mutableStateOf(true) }
     var nextId by remember { mutableStateOf<Int?>(budgetId) }

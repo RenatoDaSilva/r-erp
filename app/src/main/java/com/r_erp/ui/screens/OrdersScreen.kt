@@ -46,6 +46,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.platform.LocalContext
 import com.r_erp.api.LocalToken
+import com.r_erp.api.LocalSessionManager
 import com.r_erp.api.SupabaseClient
 import com.r_erp.api.SupabaseOrder
 import com.r_erp.api.SupabaseOrderItem
@@ -58,7 +59,8 @@ import java.util.TimeZone
 @Composable
 fun OrdersScreen(onAddOrder: () -> Unit, onOrderClick: (Int) -> Unit) {
     val token = LocalToken.current
-    val supabaseService = remember(token) { SupabaseService.create(token) }
+    val sessionManager = LocalSessionManager.current
+    val supabaseService = remember(token) { SupabaseService.create(token, sessionManager) }
     var orders by remember { mutableStateOf<List<SupabaseOrder>>(emptyList()) }
     var clients by remember { mutableStateOf<List<SupabaseClient>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }

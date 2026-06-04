@@ -34,17 +34,19 @@ import androidx.compose.ui.unit.dp
 import com.r_erp.api.SupabaseService
 import com.r_erp.api.SupabaseServiceItem
 import com.r_erp.api.LocalToken
+import com.r_erp.api.LocalSessionManager
 import java.util.Locale
 
 @Composable
 fun ServicesScreen(onServiceClick: (Int) -> Unit) {
     val token = LocalToken.current
+    val sessionManager = LocalSessionManager.current
     var services by remember { mutableStateOf<List<SupabaseServiceItem>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(value = true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val supabaseService = remember(token) { SupabaseService.create(token) }
+    val supabaseService = remember(token) { SupabaseService.create(token, sessionManager) }
 
     val filteredServices = remember(searchQuery, services) {
         if (searchQuery.isBlank()) {

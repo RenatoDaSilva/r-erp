@@ -34,6 +34,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.SupabaseService
 import com.r_erp.api.LocalToken
+import com.r_erp.api.LocalSessionManager
 import kotlinx.coroutines.launch
 import java.text.NumberFormat
 import java.util.Locale
@@ -44,7 +45,8 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val token = LocalToken.current
-    val supabaseService = remember(token) { SupabaseService.create(token) }
+    val sessionManager = LocalSessionManager.current
+    val supabaseService = remember(token) { SupabaseService.create(token, sessionManager) }
     var isLoading by remember { mutableStateOf(value = true) }
     var isSaving by remember { mutableStateOf(value = false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -237,8 +239,6 @@ fun ProductDetailScreen(productId: Int, onBack: () -> Unit) {
                         isSaving = true
                         scope.launch {
                             try {
-                                val supabaseService = SupabaseService.create()
-                                
                                 val productMap = mutableMapOf<String, Any>()
                                 if (description.isNotBlank()) productMap["description"] = description
                                 if (type.isNotBlank()) productMap["type"] = type
