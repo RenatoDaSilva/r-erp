@@ -176,6 +176,18 @@ data class SupabaseReceivableTotal(
     val paid: Double?
 )
 
+data class SupabaseConfig(
+    val id: Int? = null,
+    @SerializedName("user_id") val userId: String? = null,
+    val logo: String? = null,
+    @SerializedName("company_name") val companyName: String? = null,
+    @SerializedName("company_address") val companyAddress: String? = null,
+    @SerializedName("cnpj_cpf") val cnpjCpf: String? = null,
+    @SerializedName("default_message_budget") val defaultMessageBudget: String? = null,
+    @SerializedName("default_message_order") val defaultMessageOrder: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null
+)
+
 data class AuthResponse(
     @SerializedName("access_token") val accessToken: String,
     @SerializedName("refresh_token") val refreshToken: String? = null,
@@ -263,6 +275,18 @@ interface SupabaseService {
 
     @GET("receivables_totals")
     suspend fun getReceivablesTotals(): List<SupabaseReceivableTotal>
+
+    @GET("config")
+    suspend fun getConfig(): List<SupabaseConfig>
+
+    @POST("config")
+    suspend fun createConfig(@Body config: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
+
+    @PATCH("config")
+    suspend fun updateConfig(
+        @Query("id") idFilter: String,
+        @Body config: Map<String, @JvmSuppressWildcards Any>
+    ): Response<Unit>
 
     @GET("services")
     suspend fun getServices(): List<SupabaseServiceItem>

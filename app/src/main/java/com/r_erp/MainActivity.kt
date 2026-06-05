@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.width
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.Assignment
 import androidx.compose.material.icons.automirrored.filled.ExitToApp
@@ -20,6 +19,7 @@ import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Event
 import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
+import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.LocalMall
 import androidx.compose.material3.CircularProgressIndicator
@@ -47,7 +47,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.LocalToken
 import com.r_erp.api.LocalSessionManager
@@ -111,6 +110,7 @@ fun MainScreen(sessionManager: SessionManager) {
         NavigationItem("Orçamentos", Icons.Default.Description),
         NavigationItem("Pedidos", Icons.AutoMirrored.Filled.Assignment),
         NavigationItem("Receber", Icons.Default.AttachMoney),
+        NavigationItem("Configurações", Icons.Default.Settings),
     )
     var selectedItemIndex by rememberSaveable { mutableIntStateOf(0) }
     var selectedId by rememberSaveable { mutableStateOf<Int?>(null) }
@@ -124,10 +124,10 @@ fun MainScreen(sessionManager: SessionManager) {
         drawerContent = {
             ModalDrawerSheet {
                 Spacer(modifier = Modifier.height(16.dp))
-                items.forEachIndexed { index, item ->
+                items.filter { it.title != "Configurações" }.forEachIndexed { index, item ->
                     NavigationDrawerItem(
                         label = { Text(text = item.title) },
-                        selected = index == selectedItemIndex,
+                        selected = index == selectedItemIndex && items[selectedItemIndex].title != "Configurações",
                         onClick = {
                             selectedItemIndex = index
                             selectedId = null
@@ -150,6 +150,33 @@ fun MainScreen(sessionManager: SessionManager) {
                 }
                 
                 Spacer(modifier = Modifier.weight(1f))
+
+                val configItemIndex = items.indexOfFirst { it.title == "Configurações" }
+                if (configItemIndex != -1) {
+                    val configItem = items[configItemIndex]
+                    NavigationDrawerItem(
+                        label = { Text(text = configItem.title) },
+                        selected = selectedItemIndex == configItemIndex,
+                        onClick = {
+                            selectedItemIndex = configItemIndex
+                            selectedId = null
+                            isAddingAgendaItem = false
+                            isAddingBudget = false
+                            isAddingOrder = false
+                            isAddingReceivable = false
+                            scope.launch {
+                                drawerState.close()
+                            }
+                        },
+                        icon = {
+                            Icon(
+                                imageVector = configItem.icon,
+                                contentDescription = configItem.title,
+                            )
+                        },
+                        modifier = Modifier.padding(NavigationDrawerItemDefaults.ItemPadding),
+                    )
+                }
                 
                 NavigationDrawerItem(
                     label = { Text(text = "Sair") },
@@ -186,6 +213,7 @@ fun MainScreen(sessionManager: SessionManager) {
                             selectedId != null && items[selectedItemIndex].title == "Serviços" -> "Dados do Serviço"
                             selectedId != null && items[selectedItemIndex].title == "Pedidos" -> "Dados do Pedido"
                             selectedId != null && items[selectedItemIndex].title == "Receber" -> "Dados do Título"
+                            items[selectedItemIndex].title == "Configurações" -> "Configurações"
                             else -> items[selectedItemIndex].title
                         }
                         Text(text = title)
@@ -308,6 +336,12 @@ fun MainScreen(sessionManager: SessionManager) {
                                 onReceivableClick = { id -> selectedId = id }
                             )
                         }
+                    }
+
+                    "Configurações" -> {
+                        ConfigScreen(onBack = {
+                            selectedItemIndex = 0
+                        })
                     }
 
                     else -> {
