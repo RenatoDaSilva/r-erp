@@ -104,6 +104,22 @@ data class SupabaseOrderItem(
     val total: Double? = null
 )
 
+data class SupabasePurchaseItem(
+    val id: Int? = null,
+    @SerializedName("purchase_id") val purchaseId: Int? = null,
+    @SerializedName("product_id") val productId: Int? = null,
+    val description: String? = null,
+    @SerializedName("product") val product: ProductNested? = null,
+    val quantity: Double? = null,
+    val price: Double? = null,
+    val discount: Double? = null,
+    val total: Double? = null
+)
+
+data class ProductNested(
+    val description: String? = null
+)
+
 // Specific DTO for inserting items
 data class SupabaseBudgetItemRequest(
     @SerializedName("budget_id") val budgetId: Int?,
@@ -118,6 +134,14 @@ data class SupabaseOrderItemRequest(
     @SerializedName("order_id") val orderId: Int?,
     @SerializedName("product_id") val productId: Int?,
     @SerializedName("service_id") val serviceId: Int?,
+    val quantity: Double?,
+    val price: Double?,
+    val discount: Double?
+)
+
+data class SupabasePurchaseItemRequest(
+    @SerializedName("purchase_id") val purchaseId: Int?,
+    @SerializedName("product_id") val productId: Int?,
     val quantity: Double?,
     val price: Double?,
     val discount: Double?
@@ -156,6 +180,21 @@ data class SupabaseOrder(
     @SerializedName("budget_id") val budgetId: Int? = null,
     @SerializedName("items_count") val itemsCount: Int? = null,
     val items: List<SupabaseOrderItem>? = null
+)
+
+data class SupabasePurchase(
+    val id: Int? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("supplier_id") val supplierId: Int? = null,
+    @SerializedName("supplier_name") val supplierName: String? = null,
+    @SerializedName("pay_until") val payUntil: String? = null,
+    val discount: Double? = null,
+    val freight: Double? = null,
+    val tax: Double? = null,
+    val total: Double? = null,
+    val message: String? = null,
+    @SerializedName("items_count") val itemsCount: Int? = null,
+    val items: List<SupabasePurchaseItem>? = null
 )
 
 data class SupabaseReceivable(
@@ -257,6 +296,35 @@ interface SupabaseService {
 
     @DELETE("order_items")
     suspend fun deleteOrderItems(@Query("order_id") orderIdFilter: String): Response<Unit>
+
+    @GET("purchases")
+    suspend fun getPurchasesWithItems(
+        @Query("select") select: String = "*,items:purchase_items(*,product:products(description))"
+    ): List<SupabasePurchase>
+
+    @GET("purchases")
+    suspend fun getPurchaseWithItems(
+        @Query("id") idFilter: String,
+        @Query("select") select: String = "*,items:purchase_items(*,product:products(description))"
+    ): List<SupabasePurchase>
+
+    @POST("purchases")
+    suspend fun createPurchase(@Body purchase: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
+
+    @PATCH("purchases")
+    suspend fun updatePurchase(
+        @Query("id") idFilter: String,
+        @Body purchase: Map<String, @JvmSuppressWildcards Any>
+    ): Response<Unit>
+
+    @POST("purchase_items")
+    suspend fun createPurchaseItems(@Body items: List<SupabasePurchaseItemRequest>): Response<Unit>
+
+    @GET("purchase_items")
+    suspend fun getPurchaseItems(@Query("purchase_id") purchaseIdFilter: String): List<SupabasePurchaseItem>
+
+    @DELETE("purchase_items")
+    suspend fun deletePurchaseItems(@Query("purchase_id") purchaseIdFilter: String): Response<Unit>
 
     @GET("receivables")
     suspend fun getReceivables(): List<SupabaseReceivable>
