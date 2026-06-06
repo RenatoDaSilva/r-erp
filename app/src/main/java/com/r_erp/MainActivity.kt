@@ -117,6 +117,7 @@ fun MainScreen(sessionManager: SessionManager) {
     var isAddingAgendaItem by rememberSaveable { mutableStateOf(false) }
     var isAddingBudget by rememberSaveable { mutableStateOf(false) }
     var isAddingOrder by rememberSaveable { mutableStateOf(false) }
+    var isAddingPurchase by rememberSaveable { mutableStateOf(false) }
     var isAddingReceivable by rememberSaveable { mutableStateOf(false) }
 
     ModalNavigationDrawer(
@@ -134,6 +135,7 @@ fun MainScreen(sessionManager: SessionManager) {
                             isAddingAgendaItem = false
                             isAddingBudget = false
                             isAddingOrder = false
+                            isAddingPurchase = false
                             isAddingReceivable = false
                             scope.launch {
                                 drawerState.close()
@@ -163,6 +165,7 @@ fun MainScreen(sessionManager: SessionManager) {
                             isAddingAgendaItem = false
                             isAddingBudget = false
                             isAddingOrder = false
+                            isAddingPurchase = false
                             isAddingReceivable = false
                             scope.launch {
                                 drawerState.close()
@@ -206,12 +209,14 @@ fun MainScreen(sessionManager: SessionManager) {
                             isAddingAgendaItem -> "Novo Agendamento"
                             isAddingBudget -> "Novo Orçamento"
                             isAddingOrder -> "Novo Pedido"
+                            isAddingPurchase -> "Nova Compra"
                             isAddingReceivable -> "Novo Recebimento"
                             selectedId != null && items[selectedItemIndex].title == "Clientes" -> "Dados do Cliente"
                             selectedId != null && items[selectedItemIndex].title == "Fornecedores" -> "Dados do Fornecedor"
                             selectedId != null && items[selectedItemIndex].title == "Produtos" -> "Dados do Produto"
                             selectedId != null && items[selectedItemIndex].title == "Serviços" -> "Dados do Serviço"
                             selectedId != null && items[selectedItemIndex].title == "Pedidos" -> "Dados do Pedido"
+                            selectedId != null && items[selectedItemIndex].title == "Compras" -> "Dados da Compra"
                             selectedId != null && items[selectedItemIndex].title == "Receber" -> "Dados do Título"
                             items[selectedItemIndex].title == "Configurações" -> "Configurações"
                             else -> items[selectedItemIndex].title
@@ -284,6 +289,23 @@ fun MainScreen(sessionManager: SessionManager) {
                             }
                         } else {
                             ServicesScreen(onServiceClick = { id -> selectedId = id })
+                        }
+                    }
+
+                    "Compras" -> {
+                        if (isAddingPurchase || selectedId != null) {
+                            PurchasesDetailScreen(
+                                purchaseId = selectedId,
+                                onBack = {
+                                    isAddingPurchase = false
+                                    selectedId = null
+                                }
+                            )
+                        } else {
+                            PurchasesScreen(
+                                onAddPurchase = { isAddingPurchase = true },
+                                onPurchaseClick = { id -> selectedId = id }
+                            )
                         }
                     }
 
