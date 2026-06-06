@@ -33,6 +33,7 @@ fun ConfigScreen(onBack: () -> Unit) {
     var configId by remember { mutableStateOf<Int?>(null) }
     var companyName by remember { mutableStateOf("") }
     var companyAddress by remember { mutableStateOf("") }
+    var companyPhone by remember { mutableStateOf("") }
     var cnpjCpf by remember { mutableStateOf("") }
     var defaultMessageBudget by remember { mutableStateOf("") }
     var defaultMessageOrder by remember { mutableStateOf("") }
@@ -53,6 +54,7 @@ fun ConfigScreen(onBack: () -> Unit) {
                 configId = cfg.id
                 companyName = cfg.companyName ?: ""
                 companyAddress = cfg.companyAddress ?: ""
+                companyPhone = cfg.companyPhone ?: ""
                 cnpjCpf = cfg.cnpjCpf ?: ""
                 defaultMessageBudget = cfg.defaultMessageBudget ?: ""
                 defaultMessageOrder = cfg.defaultMessageOrder ?: ""
@@ -93,6 +95,7 @@ fun ConfigScreen(onBack: () -> Unit) {
         Triple("Logo", "logo", "IMAGE"),
         Triple("Nome da Empresa", "company_name", "TEXT"),
         Triple("Endereço da Empresa", "company_address", "TEXT"),
+        Triple("Telefone da Empresa", "company_phone", "TEXT"),
         Triple("CNPJ/CPF", "cnpj_cpf", "TEXT"),
         Triple("Msg. Padrão Orçamento", "default_message_budget", "TEXT"),
         Triple("Msg. Padrão Pedido", "default_message_order", "TEXT")
@@ -118,6 +121,7 @@ fun ConfigScreen(onBack: () -> Unit) {
                             val configMap = mutableMapOf<String, Any>(
                                 "company_name" to companyName,
                                 "company_address" to companyAddress,
+                                "company_phone" to companyPhone,
                                 "cnpj_cpf" to cnpjCpf,
                                 "default_message_budget" to defaultMessageBudget,
                                 "default_message_order" to defaultMessageOrder
@@ -280,6 +284,7 @@ fun ConfigScreen(onBack: () -> Unit) {
                                             val value = when (key) {
                                                 "company_name" -> companyName
                                                 "company_address" -> companyAddress
+                                                "company_phone" -> companyPhone
                                                 "cnpj_cpf" -> cnpjCpf
                                                 "default_message_budget" -> defaultMessageBudget
                                                 "default_message_order" -> defaultMessageOrder
@@ -291,6 +296,7 @@ fun ConfigScreen(onBack: () -> Unit) {
                                                     when (key) {
                                                         "company_name" -> companyName = newValue
                                                         "company_address" -> companyAddress = newValue
+                                                        "company_phone" -> companyPhone = newValue
                                                         "cnpj_cpf" -> cnpjCpf = newValue
                                                         "default_message_budget" -> defaultMessageBudget = newValue
                                                         "default_message_order" -> defaultMessageOrder = newValue

@@ -182,6 +182,7 @@ data class SupabaseConfig(
     val logo: String? = null,
     @SerializedName("company_name") val companyName: String? = null,
     @SerializedName("company_address") val companyAddress: String? = null,
+    @SerializedName("company_phone") val companyPhone: String? = null,
     @SerializedName("cnpj_cpf") val cnpjCpf: String? = null,
     @SerializedName("default_message_budget") val defaultMessageBudget: String? = null,
     @SerializedName("default_message_order") val defaultMessageOrder: String? = null,
