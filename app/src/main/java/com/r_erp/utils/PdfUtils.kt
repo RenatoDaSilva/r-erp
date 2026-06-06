@@ -2,13 +2,18 @@ package com.r_erp.utils
 
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.Canvas
 import android.graphics.Paint
+import android.graphics.Rect
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.graphics.pdf.PdfDocument
 import android.net.Uri
 import androidx.core.content.FileProvider
 import com.r_erp.api.SupabaseBudget
+import com.r_erp.api.SupabaseConfig
 import com.r_erp.api.SupabaseOrder
 import com.r_erp.api.SupabaseReceivable
 import com.r_erp.api.SupabaseReceivableTotal
@@ -113,7 +118,13 @@ object PdfUtils {
         shareFile(context, file, "Relatório de Recebimentos")
     }
 
-    fun generateAndShareBudgetPdf(context: Context, budget: SupabaseBudget, clientName: String? = null, viaWhatsapp: Boolean = false) {
+    fun generateAndShareBudgetPdf(
+        context: Context, 
+        budget: SupabaseBudget, 
+        clientName: String? = null, 
+        viaWhatsapp: Boolean = false,
+        config: SupabaseConfig? = null
+    ) {
         val pdfDocument = PdfDocument()
         val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 Size
         val page = pdfDocument.startPage(pageInfo)
@@ -125,6 +136,40 @@ object PdfUtils {
         var y = 50f
         val margin = 50f
         val pageWidth = pageInfo.pageWidth.toFloat()
+
+        // New Header with Config Info
+        if (config != null) {
+            decodeLogo(config.logo)?.let { logoBitmap ->
+                val logoHeight = 60f
+                val logoWidth = logoBitmap.width * (logoHeight / logoBitmap.height)
+                val destRect = RectF(margin, y, margin + logoWidth, y + logoHeight)
+                canvas.drawBitmap(logoBitmap, null, destRect, paint)
+                
+                val headerPaint = Paint().apply {
+                    textSize = 12f
+                    typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                }
+                val textX = margin + logoWidth + 10f
+                canvas.drawText(config.companyName ?: "", textX, y + 15f, headerPaint)
+                headerPaint.typeface = Typeface.DEFAULT
+                headerPaint.textSize = 10f
+                canvas.drawText(config.companyAddress ?: "", textX, y + 35f, headerPaint)
+                canvas.drawText(config.companyPhone ?: "", textX, y + 55f, headerPaint)
+                y += 80f
+            } ?: run {
+                // If logo is null, still draw text
+                val headerPaint = Paint().apply {
+                    textSize = 12f
+                    typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+                }
+                canvas.drawText(config.companyName ?: "", margin, y + 15f, headerPaint)
+                headerPaint.typeface = Typeface.DEFAULT
+                headerPaint.textSize = 10f
+                canvas.drawText(config.companyAddress ?: "", margin, y + 35f, headerPaint)
+                canvas.drawText(config.companyPhone ?: "", margin, y + 55f, headerPaint)
+                y += 80f
+            }
+        }
 
         // Header: Center, double font size
         titlePaint.textSize = 24f
@@ -329,7 +374,13 @@ object PdfUtils {
         context.startActivity(Intent.createChooser(intent, title))
     }
 
-    fun generateAndShareOrderPdf(context: Context, order: SupabaseOrder, clientName: String? = null, viaWhatsapp: Boolean = false) {
+    fun generateAndShareOrderPdf(
+        context: Context, 
+        order: SupabaseOrder, 
+        clientName: String? = null, 
+        viaWhatsapp: Boolean = false,
+        config: SupabaseConfig? = null
+    ) {
         val pdfDocument = PdfDocument()
         val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 Size
         val page = pdfDocument.startPage(pageInfo)
@@ -341,6 +392,35 @@ object PdfUtils {
         var y = 50f
         val margin = 50f
         val pageWidth = pageInfo.pageWidth.toFloat()
+
+        // New Header with Config Info
+        if (config != null) {
+            val logoBitmap = decodeLogo(config.logo)
+            var textX = margin
+            if (logoBitmap != null) {
+                val logoHeight = 60f
+                val logoWidth = logoBitmap.width * (logoHeight / logoBitmap.height)
+                val destRect = RectF(margin, y, margin + logoWidth, y + logoHeight)
+                canvas.drawBitmap(logoBitmap, null, destRect, paint)
+                textX += logoWidth + 10f
+            }
+            
+            val headerPaint = Paint().apply {
+                textSize = 12f
+                typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+            }
+            
+            // Company Name
+            canvas.drawText(config.companyName ?: "", textX, y + 15f, headerPaint)
+            
+            // Address and Phone
+            headerPaint.typeface = Typeface.DEFAULT
+            headerPaint.textSize = 10f
+            canvas.drawText(config.companyAddress ?: "", textX, y + 35f, headerPaint)
+            canvas.drawText(config.companyPhone ?: "", textX, y + 55f, headerPaint)
+            
+            y += 80f
+        }
 
         // Header: Center, double font size
         titlePaint.textSize = 24f
@@ -437,10 +517,22 @@ object PdfUtils {
         canvas.drawText("TOTAL: ${String.format(localeBR, "%.2f", order.total ?: 0.0)}", rightMargin, y, boldPaint)
         y += 30f
 
-        if (!order.message.isNullOrBlank()) {
+        val footerMessage = buildString {
+            append(order.message ?: "")
+            if (!order.message.isNullOrBlank() && !config?.defaultMessageOrder.isNullOrBlank()) {
+                append("\n")
+            }
+            append(config?.defaultMessageOrder ?: "")
+        }
+
+        if (footerMessage.isNotBlank()) {
             paint.textAlign = Paint.Align.LEFT
-            boldPaint.textSize = 14f
-            canvas.drawText("Mensagem: ${order.message}", margin, y, paint)
+            val lines = wrapText("Mensagem: $footerMessage", paint, pageWidth - 2 * margin)
+            lines.forEach { line ->
+                if (y > 820f) return@forEach
+                canvas.drawText(line, margin, y, paint)
+                y += 15f
+            }
         }
 
         pdfDocument.finishPage(page)
@@ -466,26 +558,32 @@ object PdfUtils {
 
     private fun wrapText(text: String, paint: Paint, maxWidth: Float): List<String> {
         val result = mutableListOf<String>()
-        val words = text.split(" ")
-        var currentLine = StringBuilder()
+        val paragraphs = text.split("\n")
+        
+        for (paragraph in paragraphs) {
+            val words = paragraph.split(" ")
+            var currentLine = StringBuilder()
 
-        for (word in words) {
-            val testLine = if (currentLine.isEmpty()) word else "${currentLine} $word"
-            val width = paint.measureText(testLine)
-            if (width <= maxWidth) {
-                currentLine.append(if (currentLine.isEmpty()) word else " $word")
-            } else {
-                if (currentLine.isNotEmpty()) {
-                    result.add(currentLine.toString())
-                    currentLine = StringBuilder(word)
+            for (word in words) {
+                val testLine = if (currentLine.isEmpty()) word else "${currentLine} $word"
+                val width = paint.measureText(testLine)
+                if (width <= maxWidth) {
+                    currentLine.append(if (currentLine.isEmpty()) word else " $word")
                 } else {
-                    // Word itself is longer than maxWidth, force break it
-                    result.add(word)
+                    if (currentLine.isNotEmpty()) {
+                        result.add(currentLine.toString())
+                        currentLine = StringBuilder(word)
+                    } else {
+                        result.add(word)
+                    }
                 }
             }
-        }
-        if (currentLine.isNotEmpty()) {
-            result.add(currentLine.toString())
+            if (currentLine.isNotEmpty()) {
+                result.add(currentLine.toString())
+            } else if (paragraphs.size > 1) {
+                // Handle empty lines between paragraphs
+                result.add("")
+            }
         }
         return if (result.isEmpty()) listOf("") else result
     }
@@ -499,6 +597,25 @@ object PdfUtils {
             if (date != null) outputFormat.format(date) else dateStr
         } catch (e: Exception) {
             dateStr
+        }
+    }
+
+    private fun decodeLogo(logo: String?): Bitmap? {
+        if (logo.isNullOrBlank()) return null
+        return try {
+            val bytes = if (logo.startsWith("\\x")) {
+                val hex = logo.substring(2).filter { it.isDigit() || it in 'a'..'f' || it in 'A'..'F' }
+                val b = ByteArray(hex.length / 2)
+                for (i in 0 until (hex.length / 2) * 2 step 2) {
+                    b[i / 2] = hex.substring(i, i + 2).toInt(16).toByte()
+                }
+                b
+            } else {
+                android.util.Base64.decode(logo, android.util.Base64.DEFAULT)
+            }
+            BitmapFactory.decodeByteArray(bytes, 0, bytes.size)
+        } catch (e: Exception) {
+            null
         }
     }
 }

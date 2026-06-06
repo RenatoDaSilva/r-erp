@@ -63,6 +63,7 @@ fun OrdersScreen(onAddOrder: () -> Unit, onOrderClick: (Int) -> Unit) {
     val supabaseService = remember(token) { SupabaseService.create(token, sessionManager) }
     var orders by remember { mutableStateOf<List<SupabaseOrder>>(emptyList()) }
     var clients by remember { mutableStateOf<List<SupabaseClient>>(emptyList()) }
+    var config by remember { mutableStateOf<com.r_erp.api.SupabaseConfig?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(value = true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -84,6 +85,10 @@ fun OrdersScreen(onAddOrder: () -> Unit, onOrderClick: (Int) -> Unit) {
         try {
             clients = supabaseService.getClients()
             orders = supabaseService.getOrdersWithItems()
+            val configs = supabaseService.getConfig()
+            if (configs.isNotEmpty()) {
+                config = configs.first()
+            }
             isLoading = false
         } catch (e: Exception) {
             if (e.message?.contains("composition") != true) {
@@ -157,6 +162,7 @@ fun OrdersScreen(onAddOrder: () -> Unit, onOrderClick: (Int) -> Unit) {
                             OrderItem(
                                 order, 
                                 clientName = order.clientName ?: clientMap[order.clientId] ?: "N/A",
+                                config = config,
                                 onClick = { onOrderClick(order.id ?: 0) }
                             )
                         }
@@ -169,7 +175,7 @@ fun OrdersScreen(onAddOrder: () -> Unit, onOrderClick: (Int) -> Unit) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun OrderItem(order: SupabaseOrder, clientName: String, onClick: () -> Unit) {
+fun OrderItem(order: SupabaseOrder, clientName: String, config: com.r_erp.api.SupabaseConfig?, onClick: () -> Unit) {
     val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
 
@@ -276,14 +282,14 @@ fun OrderItem(order: SupabaseOrder, clientName: String, onClick: () -> Unit) {
                 text = { Text("Gerar PDF ...") },
                 onClick = {
                     showMenu = false
-                    PdfUtils.generateAndShareOrderPdf(context, order, clientName = clientName)
+                    PdfUtils.generateAndShareOrderPdf(context, order, clientName = clientName, config = config)
                 }
             )
             DropdownMenuItem(
                 text = { Text("Enviar por Whatsapp ...") },
                 onClick = {
                     showMenu = false
-                    PdfUtils.generateAndShareOrderPdf(context, order, clientName = clientName, viaWhatsapp = true)
+                    PdfUtils.generateAndShareOrderPdf(context, order, clientName = clientName, viaWhatsapp = true, config = config)
                 }
             )
         }

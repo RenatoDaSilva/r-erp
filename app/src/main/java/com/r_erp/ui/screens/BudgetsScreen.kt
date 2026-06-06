@@ -70,6 +70,7 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
     val supabaseService = remember(token) { SupabaseService.create(token, sessionManager) }
     var budgets by remember { mutableStateOf<List<SupabaseBudget>>(emptyList()) }
     var clients by remember { mutableStateOf<List<SupabaseClient>>(emptyList()) }
+    var config by remember { mutableStateOf<com.r_erp.api.SupabaseConfig?>(null) }
     var searchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(value = true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
@@ -96,6 +97,10 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
             try {
                 clients = supabaseService.getClients()
                 budgets = supabaseService.getBudgetsWithItems()
+                val configs = supabaseService.getConfig()
+                if (configs.isNotEmpty()) {
+                    config = configs.first()
+                }
                 isLoading = false
             } catch (e: Exception) {
                 if (e.message?.contains("composition") != true) {
@@ -185,6 +190,7 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
                             BudgetItem(
                                 budget, 
                                 clientName = budget.clientName ?: clientMap[budget.clientId] ?: "N/A",
+                                config = config,
                                 onClick = { onBudgetClick(budget.id ?: 0) },
                                 onCloseOrder = {
                                     scope.launch {
@@ -213,7 +219,7 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-fun BudgetItem(budget: SupabaseBudget, clientName: String, onClick: () -> Unit, onCloseOrder: () -> Unit) {
+fun BudgetItem(budget: SupabaseBudget, clientName: String, config: com.r_erp.api.SupabaseConfig?, onClick: () -> Unit, onCloseOrder: () -> Unit) {
     val context = LocalContext.current
     var showMenu by remember { mutableStateOf(false) }
     val highlightColor = MaterialTheme.colorScheme.primary
@@ -341,14 +347,14 @@ fun BudgetItem(budget: SupabaseBudget, clientName: String, onClick: () -> Unit, 
                 text = { Text("Gerar PDF ...") },
                 onClick = {
                     showMenu = false
-                    PdfUtils.generateAndShareBudgetPdf(context, budget, clientName = clientName)
+                    PdfUtils.generateAndShareBudgetPdf(context, budget, clientName = clientName, config = config)
                 }
             )
             DropdownMenuItem(
                 text = { Text("Enviar por Whatsapp ...") },
                 onClick = {
                     showMenu = false
-                    PdfUtils.generateAndShareBudgetPdf(context, budget, clientName = clientName, viaWhatsapp = true)
+                    PdfUtils.generateAndShareBudgetPdf(context, budget, clientName = clientName, viaWhatsapp = true, config = config)
                 }
             )
             DropdownMenuItem(
