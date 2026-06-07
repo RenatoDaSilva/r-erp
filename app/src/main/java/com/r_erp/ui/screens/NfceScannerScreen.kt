@@ -206,7 +206,6 @@ fun NfceLoaderView(
 ) {
     var statusMessage by remember { mutableStateOf("Conectando ao portal SEF/SC...") }
     var isLoading by remember { mutableStateOf(true) }
-    var debugLog by remember { mutableStateOf("") }
 
     Box(modifier = Modifier.fillMaxSize().padding(16.dp), contentAlignment = Alignment.Center) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -216,50 +215,22 @@ fun NfceLoaderView(
             }
             Text(statusMessage, style = MaterialTheme.typography.titleMedium, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             
-            if (debugLog.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text(debugLog, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.secondary)
-            }
-            
             Spacer(modifier = Modifier.height(16.dp))
             Button(onClick = onCancel) { Text("Cancelar") }
             
-            // WebView visible for inspection
+            // WebView hidden
             AndroidView(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .weight(1f) // Changed from fixed height to weight to fill space
-                    .padding(top = 16.dp), 
+                modifier = Modifier.size(1.dp), 
                 factory = { context ->
                     WebView(context).apply {
                         settings.javaScriptEnabled = true
                         settings.domStorageEnabled = true
                         settings.databaseEnabled = true
-                        // Set a modern mobile User Agent
                         settings.userAgentString = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/114.0.0.0 Mobile Safari/537.36"
                         
-                        // Enable mixed content if necessary
-                        settings.mixedContentMode = android.webkit.WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
-                        
-                        webChromeClient = object : android.webkit.WebChromeClient() {
-                            override fun onConsoleMessage(consoleMessage: android.webkit.ConsoleMessage?): Boolean {
-                                consoleMessage?.let {
-                                    Log.d("NfceWebViewConsole", "${it.message()} -- From line ${it.lineNumber()} of ${it.sourceId()}")
-                                }
-                                return true
-                            }
-                        }
-
                         webViewClient = object : WebViewClient() {
-                            override fun onPageStarted(view: WebView?, url: String?, favicon: android.graphics.Bitmap?) {
-                                super.onPageStarted(view, url, favicon)
-                                Log.d("NfceLoader", "Iniciando carregamento: $url")
-                            }
-
                             override fun onPageFinished(view: WebView?, currentUrl: String?) {
                                 super.onPageFinished(view, currentUrl)
-                                Log.d("NfceLoader", "Página finalizada: $currentUrl")
-                                debugLog = "Página carregada em: $currentUrl"
                                 
                                 val handler = android.os.Handler(android.os.Looper.getMainLooper())
                                 val checkContent = object : Runnable {
@@ -269,13 +240,10 @@ fun NfceLoaderView(
                                         view?.evaluateJavascript(
                                             """
                                             (function() {
-                                                console.log("NFCe Debug: Running check script");
-                                                
                                                 // 0. Check for Cloudflare/Challenges
                                                 if (document.title.includes("Just a moment") || 
                                                     document.querySelector('#challenge-running') || 
                                                     document.querySelector('.cf-browser-verification')) {
-                                                    console.log("NFCe Debug: Cloudflare challenge detected");
                                                     return { status: "waiting_verification" };
                                                 }
 
@@ -287,14 +255,11 @@ fun NfceLoaderView(
                                                               bodyText.includes("Chave de Acesso");
                                                 
                                                 if (hasData) {
-                                                    console.log("NFCe Debug: Data page detected. HTML length: " + document.documentElement.outerHTML.length);
                                                     return { status: "ready", html: document.documentElement.outerHTML };
                                                 }
 
                                                 // 2. Check for verification status
-                                                var bodyText = document.body.innerText;
                                                 if (bodyText.includes("Verificando...")) {
-                                                    console.log("NFCe Debug: Verification in progress");
                                                     return { status: "waiting_verification" };
                                                 }
 
@@ -314,84 +279,64 @@ fun NfceLoaderView(
                                                         var text = (allBtns[i].value || allBtns[i].innerText || "").toUpperCase();
                                                         if (text.includes("VALIDAR") || text.includes("VISUALIZAR")) {
                                                             btn = allBtns[i];
-                                                            console.log("NFCe Debug: Found button via text search: " + text);
                                                             break;
                                                         }
                                                     }
                                                 }
 
-                                                // Only click if not disabled (verification "Sucesso!" usually enables it)
+                                                // Only click if not disabled
                                                 if (btn && !btn.disabled) {
-                                                    // Check if we already clicked this recently to avoid IPC flooding
                                                     if (window._nfceClicked) {
-                                                        console.log("NFCe Debug: Button already clicked, waiting for navigation...");
                                                         return { status: "clicked" };
                                                     }
                                                     
-                                                    console.log("NFCe Debug: Clicking validation button");
                                                     window._nfceClicked = true;
-                                                    
-                                                    // Try standard click
                                                     btn.click();
-                                                    
-                                                    // Try form submission if it's a submit button
                                                     if (btn.type === "submit" && btn.form) {
                                                         btn.form.submit();
                                                     }
-                                                    
-                                                    // Try manual event dispatch
                                                     btn.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
 
                                                     return { status: "clicked" };
                                                 }
                                                 
-                                                console.log("NFCe Debug: Waiting for verification or data. Button exists: " + (!!btn) + ", Button disabled: " + (btn ? btn.disabled : "N/A"));
                                                 return { status: "waiting" };
                                             })()
                                             """.trimIndent()
                                         ) { resultJson ->
                                             try {
-                                                Log.d("NfceLoader", "JS Result: $resultJson")
                                                 val result = com.google.gson.JsonParser.parseString(resultJson ?: "{}").asJsonObject
                                                 val status = result.get("status").asString
                                                 
                                                 when (status) {
                                                     "ready" -> {
-                                                        Log.d("NfceLoader", "Status: Ready. Starting HTML parse.")
                                                         statusMessage = "Dados encontrados! Processando..."
                                                         val html = result.get("html").asString
-                                                        val unescapedHtml = html.replace("\\\\u003C", "<")
-                                                            .replace("\\\\\"", "\"")
-                                                            .replace("\\\\n", "\n")
+                                                        val unescapedHtml = html.replace("\\u003C", "<")
+                                                            .replace("\\\"", "\"")
+                                                            .replace("\\n", "\n")
                                                         
                                                         val data = parseNfceHtml(unescapedHtml)
                                                         if (data != null) {
-                                                            Log.d("NfceLoader", "Parsing successful: ${data["supplier_name"]}")
                                                             isLoading = false
                                                             onDataExtracted(data)
                                                         } else {
-                                                            Log.e("NfceLoader", "Parsing failed: Data is null")
                                                             statusMessage = "Erro ao interpretar dados da nota."
-                                                            debugLog = "HTML recebido, mas campos não identificados."
                                                         }
                                                     }
                                                     "clicked" -> {
-                                                        Log.d("NfceLoader", "Status: Clicked. Waiting for navigation.")
                                                         statusMessage = "Acessando nota fiscal..."
                                                         handler.postDelayed(this, 3000)
                                                     }
                                                     "waiting_verification" -> {
-                                                        Log.d("NfceLoader", "Status: Waiting Verification.")
                                                         statusMessage = "Verificando segurança do portal..."
                                                         handler.postDelayed(this, 1000)
                                                     }
                                                     else -> {
-                                                        Log.d("NfceLoader", "Status: Waiting/Other.")
                                                         handler.postDelayed(this, 2000)
                                                     }
                                                 }
                                             } catch (e: Exception) {
-                                                Log.e("NfceLoader", "Error processing JS result", e)
                                                 handler.postDelayed(this, 2000)
                                             }
                                         }
@@ -403,7 +348,6 @@ fun NfceLoaderView(
                             override fun onReceivedError(view: WebView?, request: android.webkit.WebResourceRequest?, error: android.webkit.WebResourceError?) {
                                 super.onReceivedError(view, request, error)
                                 statusMessage = "Erro de conexão com o portal."
-                                debugLog = error?.description?.toString() ?: "Erro desconhecido"
                             }
                         }
                         loadUrl(url)
@@ -415,30 +359,24 @@ fun NfceLoaderView(
 }
 
 fun parseNfceHtml(html: String): Map<String, Any>? {
-    Log.d("NfceParser", "Parsing HTML content. Length: ${html.length}")
     val doc = Jsoup.parse(html)
     
     val supplierName = doc.select(".txtTopo").first()?.text() 
         ?: doc.select("#conteudo .txtCenter").first()?.text() ?: ""
-    Log.d("NfceParser", "Supplier Name: $supplierName")
     
     // Attempt to extract the entire info block to search for CNPJ and Address
     val infoBlock = doc.select("#conteudo .text").text().ifEmpty { 
         doc.select("#conteudo").text() 
     }
-    Log.d("NfceParser", "Info block text: $infoBlock")
     
     val supplierCnpj = Regex("""CNPJ:\s*([\d./-]+)""").find(infoBlock)?.groupValues?.get(1) ?: ""
-    Log.d("NfceParser", "Supplier CNPJ: $supplierCnpj")
 
     val supplierAddress = if (infoBlock.contains("Endereço:")) {
         infoBlock.substringAfter("Endereço:").substringBefore("CNPJ:").trim()
     } else ""
-    Log.d("NfceParser", "Supplier Address: $supplierAddress")
 
     val items = mutableListOf<Map<String, Any>>()
     val rows = doc.select("tr[id^=Item +]")
-    Log.d("NfceParser", "Found ${rows.size} item rows via ID selector")
     
     rows.forEach { row ->
         val nameRaw = row.select(".txtTit").text()
@@ -448,11 +386,8 @@ fun parseNfceHtml(html: String): Map<String, Any>? {
         // Try multiple selectors for details
         var details = row.select(".R_Text").text()
         if (details.isEmpty()) {
-            // If .R_Text is empty, maybe it's a sibling or child TD
             details = row.select("td").joinToString(" ") { it.text() }
         }
-        
-        Log.d("NfceParser", "Item Name: $name | Details: $details")
         
         val qty = Regex("""Qtde\.:\s*([\d,.]+)""").find(details)?.groupValues?.get(1)?.replace(".", "")?.replace(",", ".")?.toDoubleOrNull() ?: 0.0
         val unit = Regex("""UN:\s*(\w+)""").find(details)?.groupValues?.get(1) ?: ""
@@ -469,11 +404,9 @@ fun parseNfceHtml(html: String): Map<String, Any>? {
     }
 
     if (supplierName.isEmpty() || items.isEmpty()) {
-        Log.d("NfceParser", "Attempting fallback row detection")
         val table = doc.select("table#tabResult").first()
         if (table != null) {
             val rowsFallback = table.select("tr")
-            Log.d("NfceParser", "Found ${rowsFallback.size} rows in tabResult table")
             rowsFallback.forEach { r ->
                 val nameRaw = r.select("td.txtTit").text()
                 if (nameRaw.isNotEmpty()) {
@@ -482,8 +415,6 @@ fun parseNfceHtml(html: String): Map<String, Any>? {
                     if (details.isEmpty()) {
                         details = r.select("td").joinToString(" ") { it.text() }
                     }
-
-                    Log.d("NfceParser", "Fallback Item Name: $name | Details: $details")
                     
                     val qty = Regex("""Qtde\.:\s*([\d,.]+)""").find(details)?.groupValues?.get(1)?.replace(".", "")?.replace(",", ".")?.toDoubleOrNull() ?: 0.0
                     val unit = Regex("""UN:\s*(\w+)""").find(details)?.groupValues?.get(1) ?: ""
@@ -497,15 +428,10 @@ fun parseNfceHtml(html: String): Map<String, Any>? {
                     ))
                 }
             }
-        } else {
-            Log.d("NfceParser", "No tabResult table found")
         }
     }
 
-    Log.d("NfceParser", "Total items extracted: ${items.size}")
-
     if (supplierName.isEmpty() && items.isEmpty()) {
-        Log.e("NfceParser", "Failed to extract supplier name and items")
         return null
     }
 
