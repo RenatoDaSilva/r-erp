@@ -1,21 +1,29 @@
 package com.r_erp.ui.screens
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -23,29 +31,36 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.SupabaseService
 import com.r_erp.api.SupabaseProduct
 import com.r_erp.api.LocalToken
 import com.r_erp.api.LocalSessionManager
+import kotlinx.coroutines.launch
 import java.util.Locale
 
 @Composable
 fun ProductsScreen(onProductClick: (Int) -> Unit) {
     val token = LocalToken.current
     val sessionManager = LocalSessionManager.current
+    val scope = rememberCoroutineScope()
     var products by remember { mutableStateOf<List<SupabaseProduct>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(value = true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    
+    val listState = rememberLazyListState()
 
     val supabaseService = remember(token) { SupabaseService.create(token, sessionManager) }
 
@@ -59,20 +74,82 @@ fun ProductsScreen(onProductClick: (Int) -> Unit) {
         }
     }
 
-    LaunchedEffect(supabaseService) {
+    suspend fun refreshProducts(scrollToProductId: Int? = null) {
         try {
+            isLoading = true
             products = supabaseService.getProducts()
-            isLoading = false
-        } catch (e: Exception) {
-            if (e.message?.contains("composition") != true) {
-                errorMessage = if (e.message?.contains("401") == true) {
-                    "Sessão expirada. Por favor, saia e entre novamente."
-                } else {
-                    e.message ?: e.toString()
+            errorMessage = null
+            
+            if (scrollToProductId != null) {
+                val index = filteredProducts.indexOfFirst { it.id == scrollToProductId }
+                if (index >= 0) {
+                    listState.animateScrollToItem(index)
                 }
             }
+        } catch (e: Exception) {
+            errorMessage = e.message ?: e.toString()
+        } finally {
             isLoading = false
         }
+    }
+
+    LaunchedEffect(supabaseService) {
+        refreshProducts()
+    }
+
+    var showAdjustDialog by remember { mutableStateOf(false) }
+    var adjustmentType by remember { mutableStateOf("") }
+    var adjustmentProduct by remember { mutableStateOf<SupabaseProduct?>(null) }
+    var adjustmentValue by remember { mutableStateOf("1") }
+
+    if (showAdjustDialog && adjustmentProduct != null) {
+        AlertDialog(
+            onDismissRequest = { showAdjustDialog = false },
+            title = { Text(when(adjustmentType) {
+                "ajuste" -> "Ajustar estoque"
+                "perda" -> "Informar perda"
+                "recarga" -> "Informar recarga"
+                else -> ""
+            }) },
+            text = {
+                Column {
+                    Text(adjustmentProduct?.description ?: "")
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = adjustmentValue,
+                        onValueChange = { adjustmentValue = it },
+                        label = { Text("Quantidade") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val qty = adjustmentValue.toDoubleOrNull() ?: 0.0
+                    scope.launch {
+                        try {
+                            supabaseService.adjustStock(mapOf(
+                                "p_id" to adjustmentProduct!!.id!!,
+                                "p_quantity" to qty,
+                                "p_type" to adjustmentType
+                            ))
+                            showAdjustDialog = false
+                            refreshProducts(scrollToProductId = adjustmentProduct!!.id)
+                        } catch (e: Exception) {
+                            errorMessage = "Erro ao ajustar estoque: ${e.message}"
+                        }
+                    }
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAdjustDialog = false }) {
+                    Text("Cancelar")
+                }
+            }
+        )
     }
 
     Scaffold(
@@ -131,12 +208,22 @@ fun ProductsScreen(onProductClick: (Int) -> Unit) {
                     )
                 } else {
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 16.dp)
                     ) {
-                        items(filteredProducts) { product ->
-                            ProductItem(product, onClick = { onProductClick(product.id ?: 0) })
+                        itemsIndexed(filteredProducts) { _, product ->
+                            ProductItem(
+                                product = product,
+                                onClick = { onProductClick(product.id ?: 0) },
+                                onAdjustStock = { type ->
+                                    adjustmentProduct = product
+                                    adjustmentType = type
+                                    adjustmentValue = "1"
+                                    showAdjustDialog = true
+                                }
+                            )
                         }
                     }
                 }
@@ -145,54 +232,98 @@ fun ProductsScreen(onProductClick: (Int) -> Unit) {
     }
 }
 
+@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
-fun ProductItem(product: SupabaseProduct, onClick: () -> Unit) {
-    Card(
-        modifier = Modifier
-            .fillMaxWidth()
-            .padding(vertical = 8.dp)
-            .clickable { onClick() },
-        elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
-    ) {
-        Column(
-            modifier = Modifier
-                .padding(16.dp)
-        ) {
-            Text(text = "ID: ${product.id ?: "N/A"}", style = MaterialTheme.typography.labelMedium)
-            Text(text = product.description ?: "Sem descrição", style = MaterialTheme.typography.titleLarge)
-            
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "Tipo: ${product.type ?: "N/A"}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = "Un.: ${product.unit ?: "N/A"}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f)
-                )
-            }
-            
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Text(
-                    text = "Preço: ${String.format(Locale.US, "%.2f", product.price ?: 0.0)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f)
-                )
-                Text(
-                    text = "Estoque: ${String.format(Locale.US, "%.2f", product.stock ?: 0.0)}",
-                    style = MaterialTheme.typography.bodyMedium,
-                    modifier = Modifier.weight(1f)
-                )
-            }
+fun ProductItem(
+    product: SupabaseProduct,
+    onClick: () -> Unit,
+    onAdjustStock: (String) -> Unit
+) {
+    var showMenu by remember { mutableStateOf(false) }
 
-            product.cost?.let {
-                Text(
-                    text = "Custo: ${String.format(Locale.US, "%.2f", it)}",
-                    style = MaterialTheme.typography.bodyMedium
-                )
+    Box {
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp)
+                .combinedClickable(
+                    onClick = onClick,
+                    onLongClick = { showMenu = true }
+                ),
+            elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+        ) {
+            Column(
+                modifier = Modifier
+                    .padding(16.dp)
+            ) {
+                Text(text = "ID: ${product.id ?: "N/A"}", style = MaterialTheme.typography.labelMedium)
+                Text(text = product.description ?: "Sem descrição", style = MaterialTheme.typography.titleLarge)
+                
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Tipo: ${product.type ?: "N/A"}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = "Un.: ${product.unit ?: "N/A"}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+                
+                Row(modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        text = "Preço: ${String.format(Locale.US, "%.2f", product.price ?: 0.0)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                    Text(
+                        text = "Estoque: ${String.format(Locale.US, "%.2f", product.stock ?: 0.0)}",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.weight(1f)
+                    )
+                }
+
+                product.cost?.let {
+                    Text(
+                        text = "Custo: ${String.format(Locale.US, "%.2f", it)}",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
             }
+        }
+
+        DropdownMenu(
+            expanded = showMenu,
+            onDismissRequest = { showMenu = false }
+        ) {
+            val stockEnabled = product.generatesStock == true
+            
+            DropdownMenuItem(
+                text = { Text("Ajustar estoque...") },
+                onClick = {
+                    showMenu = false
+                    onAdjustStock("ajuste")
+                },
+                enabled = stockEnabled
+            )
+            DropdownMenuItem(
+                text = { Text("Perda...") },
+                onClick = {
+                    showMenu = false
+                    onAdjustStock("perda")
+                },
+                enabled = stockEnabled
+            )
+            DropdownMenuItem(
+                text = { Text("Recarga...") },
+                onClick = {
+                    showMenu = false
+                    onAdjustStock("recarga")
+                },
+                enabled = stockEnabled
+            )
         }
     }
 }
