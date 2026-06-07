@@ -13,45 +13,34 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.platform.LocalContext
+import android.widget.Toast
 import com.r_erp.api.LocalToken
 import com.r_erp.api.LocalSessionManager
 import com.r_erp.api.SupabaseSupplier
 import com.r_erp.api.SupabasePurchase
 import com.r_erp.api.SupabaseService
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
 
 @Composable
 fun PurchasesScreen(onAddPurchase: () -> Unit, onPurchaseClick: (Int) -> Unit) {
+    val context = LocalContext.current
     val token = LocalToken.current
     val sessionManager = LocalSessionManager.current
     val supabaseService = remember(token) { SupabaseService.create(token, sessionManager) }
@@ -60,6 +49,11 @@ fun PurchasesScreen(onAddPurchase: () -> Unit, onPurchaseClick: (Int) -> Unit) {
     var searchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(value = true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isScanningNfce by remember { mutableStateOf(false) }
+    var isPostingNfce by remember { mutableStateOf(false) }
+
+    val listState = rememberLazyListState()
+    val scope = rememberCoroutineScope()
 
     val supplierMap = remember(suppliers) { suppliers.associate { it.id to it.fullName } }
 
@@ -74,17 +68,65 @@ fun PurchasesScreen(onAddPurchase: () -> Unit, onPurchaseClick: (Int) -> Unit) {
         }
     }
 
-    LaunchedEffect(supabaseService) {
-        try {
-            suppliers = supabaseService.getSuppliers()
-            purchases = supabaseService.getPurchasesWithItems()
-            isLoading = false
-        } catch (e: Exception) {
-            if (e.message?.contains("composition") != true) {
-                errorMessage = e.message ?: e.toString()
+    fun loadData() {
+        isLoading = true
+        scope.launch {
+            try {
+                suppliers = supabaseService.getSuppliers()
+                purchases = supabaseService.getPurchasesWithItems()
+                isLoading = false
+            } catch (e: Exception) {
+                if (e.message?.contains("composition") != true) {
+                    errorMessage = e.message ?: e.toString()
+                }
+                isLoading = false
             }
-            isLoading = false
         }
+    }
+
+    LaunchedEffect(supabaseService) {
+        loadData()
+    }
+
+    if (isScanningNfce) {
+        NfceScannerScreen(
+            onNfceDataExtracted = { data ->
+                isScanningNfce = false
+                isPostingNfce = true
+                scope.launch {
+                    try {
+                        val response = supabaseService.buildPurchase(data)
+                        if (response.isSuccessful) {
+                            val result = response.body()
+                            if (result != null && result.isJsonPrimitive && result.asJsonPrimitive.isNumber) {
+                                val newId = result.asJsonPrimitive.asInt
+                                Toast.makeText(context, "Compra $newId registrada!", Toast.LENGTH_SHORT).show()
+                                
+                                // Refresh and scroll
+                                suppliers = supabaseService.getSuppliers()
+                                purchases = supabaseService.getPurchasesWithItems()
+                                
+                                delay(1000)
+                                val index = purchases.indexOfFirst { it.id == newId }
+                                if (index != -1) {
+                                    listState.animateScrollToItem(index)
+                                }
+                            } else {
+                                Toast.makeText(context, result?.asString ?: "Erro inesperado", Toast.LENGTH_LONG).show()
+                            }
+                        } else {
+                            Toast.makeText(context, "Erro: ${response.message()}", Toast.LENGTH_LONG).show()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Erro ao processar: ${e.message}", Toast.LENGTH_LONG).show()
+                    } finally {
+                        isPostingNfce = false
+                    }
+                }
+            },
+            onCancel = { isScanningNfce = false }
+        )
+        return
     }
 
     Scaffold(
@@ -102,6 +144,13 @@ fun PurchasesScreen(onAddPurchase: () -> Unit, onPurchaseClick: (Int) -> Unit) {
                             onAddPurchase()
                         }
                     )
+                    DropdownMenuItem(
+                        text = { Text("Ler NFS-e...") },
+                        onClick = {
+                            showFabMenu = false
+                            isScanningNfce = true
+                        }
+                    )
                 }
             }
         }
@@ -111,6 +160,10 @@ fun PurchasesScreen(onAddPurchase: () -> Unit, onPurchaseClick: (Int) -> Unit) {
                 .fillMaxSize()
                 .padding(padding)
         ) {
+            if (isPostingNfce) {
+                LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+            }
+
             if (!isLoading && errorMessage == null && purchases.isNotEmpty()) {
                 OutlinedTextField(
                     value = searchQuery,
@@ -150,11 +203,12 @@ fun PurchasesScreen(onAddPurchase: () -> Unit, onPurchaseClick: (Int) -> Unit) {
                     )
                 } else if (filteredPurchases.isEmpty()) {
                     Text(
-                        text = "Nenhuma compra corresponde ao filtro.",
+                        text = "Nenhum compra corresponde ao filtro.",
                         modifier = Modifier.align(Alignment.Center),
                     )
                 } else {
                     LazyColumn(
+                        state = listState,
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(horizontal = 16.dp)
