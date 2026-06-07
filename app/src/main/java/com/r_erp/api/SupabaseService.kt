@@ -436,7 +436,10 @@ interface SupabaseService {
     suspend fun createOrderFromBudget(@Body body: Map<String, Int>): Int
 
     @POST("rpc/build_purchase")
-    suspend fun buildPurchase(@Body body: Map<String, Any>): Response<com.google.gson.JsonElement>
+    suspend fun buildPurchase(@Body body: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
+
+    @POST("rpc/adjust_stock")
+    suspend fun adjustStock(@Body body: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
 
     companion object {
         private const val BASE_URL = "https://euzmbicrbjpgcyrojvdm.supabase.co/rest/v1/"

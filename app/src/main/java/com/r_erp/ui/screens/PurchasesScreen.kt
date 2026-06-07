@@ -95,27 +95,32 @@ fun PurchasesScreen(onAddPurchase: () -> Unit, onPurchaseClick: (Int) -> Unit) {
                 isPostingNfce = true
                 scope.launch {
                     try {
-                        val response = supabaseService.buildPurchase(data)
+                        val response = supabaseService.buildPurchase(mapOf("p_payload" to data))
                         if (response.isSuccessful) {
-                            val result = response.body()
-                            if (result != null && result.isJsonPrimitive && result.asJsonPrimitive.isNumber) {
-                                val newId = result.asJsonPrimitive.asInt
-                                Toast.makeText(context, "Compra $newId registrada!", Toast.LENGTH_SHORT).show()
-                                
-                                // Refresh and scroll
-                                suppliers = supabaseService.getSuppliers()
-                                purchases = supabaseService.getPurchasesWithItems()
-                                
-                                delay(1000)
-                                val index = purchases.indexOfFirst { it.id == newId }
-                                if (index != -1) {
-                                    listState.animateScrollToItem(index)
-                                }
-                            } else {
-                                Toast.makeText(context, result?.asString ?: "Erro inesperado", Toast.LENGTH_LONG).show()
+                            Toast.makeText(context, "Compra registrada com sucesso!", Toast.LENGTH_SHORT).show()
+                            
+                            // Refresh and scroll
+                            suppliers = supabaseService.getSuppliers()
+                            purchases = supabaseService.getPurchasesWithItems()
+                            
+                            // Since we don't have the new ID in the Response<Unit>, 
+                            // we just scroll to the top or the first item after refresh
+                            delay(500)
+                            if (purchases.isNotEmpty()) {
+                                listState.animateScrollToItem(0)
                             }
                         } else {
-                            Toast.makeText(context, "Erro: ${response.message()}", Toast.LENGTH_LONG).show()
+                            val errorBody = response.errorBody()?.string() ?: ""
+                            val errorMessage = if (errorBody.contains("message")) {
+                                try {
+                                    com.google.gson.JsonParser.parseString(errorBody).asJsonObject.get("message").asString
+                                } catch (e: Exception) {
+                                    response.message()
+                                }
+                            } else {
+                                response.message()
+                            }
+                            Toast.makeText(context, "Erro: $errorMessage", Toast.LENGTH_LONG).show()
                         }
                     } catch (e: Exception) {
                         Toast.makeText(context, "Erro ao processar: ${e.message}", Toast.LENGTH_LONG).show()
