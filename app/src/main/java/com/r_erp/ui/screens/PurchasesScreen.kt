@@ -285,12 +285,13 @@ fun PurchaseItem(purchase: SupabasePurchase, supplierName: String, onClick: () -
                     
                     displayItems.forEach { item ->
                         val itemDisplayName = item.description ?: item.product?.description ?: "Produto ${item.productId}"
+                        val itemTotal = (item.quantity ?: 0.0) * (item.price ?: 0.0) - (item.discount ?: 0.0)
                         Row(modifier = Modifier.fillMaxWidth()) {
                             Text(text = itemDisplayName, modifier = Modifier.weight(3f), fontSize = 10.sp, maxLines = 1)
                             Text(text = formatDecimal(item.quantity), modifier = Modifier.weight(1f), fontSize = 10.sp)
                             Text(text = formatDecimal(item.price), modifier = Modifier.weight(1.5f), fontSize = 10.sp)
                             Text(text = formatDecimal(item.discount), modifier = Modifier.weight(1.5f), fontSize = 10.sp)
-                            Text(text = formatDecimal(item.total), modifier = Modifier.weight(1.5f), fontSize = 10.sp)
+                            Text(text = formatDecimal(itemTotal), modifier = Modifier.weight(1.5f), fontSize = 10.sp)
                         }
                     }
 
