@@ -61,6 +61,15 @@ data class SupabaseProduct(
     @SerializedName("created_at") val createdAt: String? = null
 )
 
+data class SupabaseProductXSupplier(
+    val id: Int? = null,
+    @SerializedName("supplier_id") val supplierId: Int? = null,
+    @SerializedName("product_id") val productId: Int? = null,
+    val code: String? = null,
+    val description: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null
+)
+
 data class SupabaseUnit(
     val id: Int? = null,
     val unit: String? = null,
@@ -385,13 +394,29 @@ interface SupabaseService {
     suspend fun getProduct(@Query("id") idFilter: String): List<SupabaseProduct>
 
     @POST("products")
-    suspend fun createProduct(@Body product: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
+    suspend fun createProduct(
+        @retrofit2.http.Header("Prefer") prefer: String = "return=representation",
+        @Body product: Map<String, @JvmSuppressWildcards Any>
+    ): Response<List<SupabaseProduct>>
 
     @PATCH("products")
     suspend fun updateProduct(
         @Query("id") idFilter: String,
         @Body product: Map<String, @JvmSuppressWildcards Any>
     ): Response<Unit>
+
+    @GET("products_x_suppliers")
+    suspend fun getProductXSuppliers(
+        @Query("supplier_id") supplierId: String,
+        @Query("code") code: String? = null,
+        @Query("description") description: String? = null
+    ): List<SupabaseProductXSupplier>
+
+    @POST("products_x_suppliers")
+    suspend fun createProductXSupplier(
+        @retrofit2.http.Header("Prefer") prefer: String = "return=representation",
+        @Body data: Map<String, @JvmSuppressWildcards Any>
+    ): Response<List<SupabaseProductXSupplier>>
 
     @GET("clients")
     suspend fun getClients(): List<SupabaseClient>
@@ -405,8 +430,17 @@ interface SupabaseService {
     @GET("suppliers")
     suspend fun getSupplier(@Query("id") idFilter: String): List<SupabaseSupplier>
 
+    @GET("suppliers")
+    suspend fun getSupplierByCnpj(@Query("cpfcnpj") cnpj: String): List<SupabaseSupplier>
+
+    @GET("suppliers")
+    suspend fun getSupplierByFullname(@Query("fullname") fullname: String): List<SupabaseSupplier>
+
     @POST("suppliers")
-    suspend fun createSupplier(@Body supplier: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
+    suspend fun createSupplier(
+        @retrofit2.http.Header("Prefer") prefer: String = "return=representation",
+        @Body supplier: Map<String, @JvmSuppressWildcards Any>
+    ): Response<List<SupabaseSupplier>>
 
     @PATCH("suppliers")
     suspend fun updateSupplier(
