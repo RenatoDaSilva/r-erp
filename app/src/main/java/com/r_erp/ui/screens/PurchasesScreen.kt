@@ -150,7 +150,7 @@ fun PurchasesScreen(onAddPurchase: () -> Unit, onPurchaseClick: (Int) -> Unit) {
                         }
                     )
                     DropdownMenuItem(
-                        text = { Text("Ler NFS-e...") },
+                        text = { Text("Ler NFC-e...") },
                         onClick = {
                             showFabMenu = false
                             isScanningNfce = true
