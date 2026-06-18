@@ -475,6 +475,9 @@ interface SupabaseService {
     @POST("rpc/adjust_stock")
     suspend fun adjustStock(@Body body: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
 
+    @POST("rpc/split_receivable")
+    suspend fun splitReceivable(@Body body: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
+
     companion object {
         private const val BASE_URL = "https://euzmbicrbjpgcyrojvdm.supabase.co/rest/v1/"
         private const val API_KEY = BuildConfig.SUPABASE_KEY

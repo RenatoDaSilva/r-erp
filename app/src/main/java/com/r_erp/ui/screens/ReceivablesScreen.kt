@@ -17,7 +17,10 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.CalendarToday
+import androidx.compose.material.icons.filled.Remove
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -90,8 +93,15 @@ fun ReceivablesScreen(onAddReceivable: () -> Unit, onReceivableClick: (Int) -> U
     
     // Dialog States
     var showBaixarDialog by remember { mutableStateOf<SupabaseReceivable?>(null) }
+    var showParcelarDialog by remember { mutableStateOf<SupabaseReceivable?>(null) }
     var showDatePickerFor by remember { mutableStateOf<SupabaseReceivable?>(null) }
     var paidValueInput by remember { mutableStateOf("") }
+    
+    // Split States
+    var splitEntryFee by remember { mutableStateOf("0.00") }
+    var splitInstallments by remember { mutableIntStateOf(1) }
+    var splitFirstDate by remember { mutableStateOf(SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())) }
+    var showSplitDatePicker by remember { mutableStateOf(false) }
 
     val clientMap = remember(clients) { clients.associate { it.id to it.fullName } }
 
@@ -212,6 +222,12 @@ fun ReceivablesScreen(onAddReceivable: () -> Unit, onReceivableClick: (Int) -> U
                                         showDatePickerFor = receivable
                                     }
                                 },
+                                onParcelar = {
+                                    showParcelarDialog = receivable
+                                    splitEntryFee = "0.00"
+                                    splitInstallments = 1
+                                    splitFirstDate = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+                                },
                                 onPrint = {
                                     // Filtered records are those shown in the screen
                                     PdfUtils.generateAndShareReceivablesReport(context, filteredReceivables, clientMap, totals)
@@ -221,6 +237,128 @@ fun ReceivablesScreen(onAddReceivable: () -> Unit, onReceivableClick: (Int) -> U
                     }
                 }
             }
+        }
+    }
+
+    if (showParcelarDialog != null) {
+        val rec = showParcelarDialog!!
+        val entry = splitEntryFee.toDoubleOrNull() ?: 0.0
+        val installmentValue = ((rec.value ?: 0.0) - entry) / splitInstallments
+
+        AlertDialog(
+            onDismissRequest = { showParcelarDialog = null },
+            title = { Text("Parcelar Recebimento") },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    OutlinedTextField(
+                        value = splitEntryFee,
+                        onValueChange = { splitEntryFee = it },
+                        label = { Text("Entrada:") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("Parcelas:")
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            IconButton(onClick = { if (splitInstallments > 1) splitInstallments-- }) {
+                                Icon(Icons.Default.Remove, contentDescription = "Diminuir")
+                            }
+                            Text(text = splitInstallments.toString(), fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 8.dp))
+                            IconButton(onClick = { splitInstallments++ }) {
+                                Icon(Icons.Default.Add, contentDescription = "Aumentar")
+                            }
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = try {
+                            val parser = SimpleDateFormat("yyyy-MM-dd", Locale.US)
+                            val formatter = SimpleDateFormat("dd/MM/yyyy", Locale.US)
+                            formatter.format(parser.parse(splitFirstDate)!!)
+                        } catch (e: Exception) { splitFirstDate },
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Primeira parcela") },
+                        trailingIcon = {
+                            IconButton(onClick = { showSplitDatePicker = true }) {
+                                Icon(Icons.Default.CalendarToday, contentDescription = "Selecionar data")
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    Text(
+                        text = "Valor da parcela: ${String.format(Locale.forLanguageTag("pt-BR"), "%.2f", installmentValue)}",
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    scope.launch {
+                        try {
+                            val response = supabaseService.splitReceivable(
+                                mapOf(
+                                    "p_id" to (rec.id ?: 0),
+                                    "p_entry_fee" to entry,
+                                    "p_installment_count" to splitInstallments,
+                                    "p_first_installment_date" to splitFirstDate
+                                )
+                            )
+                            if (response.isSuccessful) {
+                                showParcelarDialog = null
+                                loadData()
+                                Toast.makeText(context, "Parcelamento realizado com sucesso!", Toast.LENGTH_SHORT).show()
+                            } else {
+                                Toast.makeText(context, "Erro: ${response.errorBody()?.string()}", Toast.LENGTH_LONG).show()
+                            }
+                        } catch (e: Exception) {
+                            Toast.makeText(context, "Erro ao parcelar: ${e.message}", Toast.LENGTH_LONG).show()
+                        }
+                    }
+                }) {
+                    Text("OK")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showParcelarDialog = null }) {
+                    Text("Cancelar")
+                }
+            }
+        )
+    }
+
+    if (showSplitDatePicker) {
+        val initialDate = try {
+            SimpleDateFormat("yyyy-MM-dd", Locale.US).parse(splitFirstDate)?.time ?: System.currentTimeMillis()
+        } catch (e: Exception) {
+            System.currentTimeMillis()
+        }
+
+        val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialDate)
+
+        DatePickerDialog(
+            onDismissRequest = { showSplitDatePicker = false },
+            confirmButton = {
+                TextButton(onClick = {
+                    datePickerState.selectedDateMillis?.let {
+                        splitFirstDate = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date(it))
+                    }
+                    showSplitDatePicker = false
+                }) { Text("OK") }
+            },
+            dismissButton = {
+                TextButton(onClick = { showSplitDatePicker = false }) { Text("Cancelar") }
+            }
+        ) {
+            DatePicker(state = datePickerState)
         }
     }
 
@@ -330,6 +468,7 @@ fun ReceivableItem(
     onClick: () -> Unit,
     onBaixar: () -> Unit,
     onDateLongClick: () -> Unit,
+    onParcelar: () -> Unit,
     onPrint: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
@@ -385,9 +524,15 @@ fun ReceivableItem(
         }
 
         DropdownMenu(expanded = showMenu, onDismissRequest = { showMenu = false }) {
-            if (receivable.paidAt == null) {
+            val isNotPaid = receivable.paidAt == null || receivable.paidAt == ""
+            if (isNotPaid) {
                 DropdownMenuItem(text = { Text("Baixar") }, onClick = { showMenu = false; onBaixar() })
             }
+            DropdownMenuItem(
+                text = { Text("Parcelar...") }, 
+                onClick = { showMenu = false; onParcelar() },
+                enabled = isNotPaid
+            )
             DropdownMenuItem(text = { Text("Imprimir") }, onClick = { showMenu = false; onPrint() })
         }
     }
