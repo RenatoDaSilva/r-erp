@@ -100,8 +100,8 @@ fun BudgetDetailsScreen(budgetId: Int? = null, onBack: () -> Unit) {
         try {
             // Load master data
             clients = supabaseService.getClients().sortedBy { it.fullName?.lowercase() ?: "" }
-            allProducts = supabaseService.getProducts()
-            allServices = supabaseService.getServices()
+            allProducts = supabaseService.getProducts().sortedBy { it.description?.lowercase() ?: "" }
+            allServices = supabaseService.getServices().sortedBy { it.description?.lowercase() ?: "" }
 
             if (budgetId == null) {
                 // Creation mode: Get Next Sequence ID

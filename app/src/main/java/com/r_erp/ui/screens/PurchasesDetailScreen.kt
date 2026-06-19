@@ -98,7 +98,7 @@ fun PurchasesDetailScreen(purchaseId: Int? = null, onBack: () -> Unit) {
     LaunchedEffect(supabaseService) {
         try {
             suppliers = supabaseService.getSuppliers().sortedBy { it.fullName?.lowercase() ?: "" }
-            allProducts = supabaseService.getProducts()
+            allProducts = supabaseService.getProducts().sortedBy { it.description?.lowercase() ?: "" }
 
             if (purchaseId == null) {
                 try {
