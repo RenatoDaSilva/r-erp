@@ -110,6 +110,7 @@ fun MainScreen(sessionManager: SessionManager) {
         NavigationItem("Orçamentos", Icons.Default.Description),
         NavigationItem("Pedidos", Icons.AutoMirrored.Filled.Assignment),
         NavigationItem("Receber", Icons.Default.AttachMoney),
+        NavigationItem("Pagar", Icons.Default.AttachMoney),
         NavigationItem("Configurações", Icons.Default.Settings),
     )
     var selectedItemIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -119,6 +120,7 @@ fun MainScreen(sessionManager: SessionManager) {
     var isAddingOrder by rememberSaveable { mutableStateOf(false) }
     var isAddingPurchase by rememberSaveable { mutableStateOf(false) }
     var isAddingReceivable by rememberSaveable { mutableStateOf(false) }
+    var isAddingPayable by rememberSaveable { mutableStateOf(false) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -137,6 +139,7 @@ fun MainScreen(sessionManager: SessionManager) {
                             isAddingOrder = false
                             isAddingPurchase = false
                             isAddingReceivable = false
+                            isAddingPayable = false
                             scope.launch {
                                 drawerState.close()
                             }
@@ -167,6 +170,7 @@ fun MainScreen(sessionManager: SessionManager) {
                             isAddingOrder = false
                             isAddingPurchase = false
                             isAddingReceivable = false
+                            isAddingPayable = false
                             scope.launch {
                                 drawerState.close()
                             }
@@ -211,6 +215,7 @@ fun MainScreen(sessionManager: SessionManager) {
                             isAddingOrder -> "Novo Pedido"
                             isAddingPurchase -> "Nova Compra"
                             isAddingReceivable -> "Novo Recebimento"
+                            isAddingPayable -> "Novo Pagamento"
                             selectedId != null && items[selectedItemIndex].title == "Clientes" -> "Dados do Cliente"
                             selectedId != null && items[selectedItemIndex].title == "Fornecedores" -> "Dados do Fornecedor"
                             selectedId != null && items[selectedItemIndex].title == "Produtos" -> "Dados do Produto"
@@ -218,6 +223,7 @@ fun MainScreen(sessionManager: SessionManager) {
                             selectedId != null && items[selectedItemIndex].title == "Pedidos" -> "Dados do Pedido"
                             selectedId != null && items[selectedItemIndex].title == "Compras" -> "Dados da Compra"
                             selectedId != null && items[selectedItemIndex].title == "Receber" -> "Dados do Título"
+                            selectedId != null && items[selectedItemIndex].title == "Pagar" -> "Dados do Título"
                             items[selectedItemIndex].title == "Configurações" -> "Configurações"
                             else -> items[selectedItemIndex].title
                         }
@@ -356,6 +362,23 @@ fun MainScreen(sessionManager: SessionManager) {
                             ReceivablesScreen(
                                 onAddReceivable = { isAddingReceivable = true },
                                 onReceivableClick = { id -> selectedId = id }
+                            )
+                        }
+                    }
+
+                    "Pagar" -> {
+                        if (isAddingPayable || selectedId != null) {
+                            PayableDetailsScreen(
+                                payableId = selectedId ?: -1,
+                                onBack = {
+                                    isAddingPayable = false
+                                    selectedId = null
+                                }
+                            )
+                        } else {
+                            PayablesScreen(
+                                onAddPayable = { isAddingPayable = true },
+                                onPayableClick = { id -> selectedId = id }
                             )
                         }
                     }

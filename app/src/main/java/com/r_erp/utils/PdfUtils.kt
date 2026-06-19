@@ -15,6 +15,8 @@ import androidx.core.content.FileProvider
 import com.r_erp.api.SupabaseBudget
 import com.r_erp.api.SupabaseConfig
 import com.r_erp.api.SupabaseOrder
+import com.r_erp.api.SupabasePayable
+import com.r_erp.api.SupabasePayableTotal
 import com.r_erp.api.SupabaseReceivable
 import com.r_erp.api.SupabaseReceivableTotal
 import java.io.File
@@ -116,6 +118,97 @@ object PdfUtils {
         }
 
         shareFile(context, file, "Relatório de Recebimentos")
+    }
+
+    fun generateAndSharePayablesReport(
+        context: Context,
+        items: List<SupabasePayable>,
+        supplierMap: Map<Int?, String?> = emptyMap(),
+        totals: SupabasePayableTotal? = null
+    ) {
+        val pdfDocument = PdfDocument()
+        val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 Size
+        val page = pdfDocument.startPage(pageInfo)
+        val canvas: Canvas = page.canvas
+        val paint = Paint()
+        val titlePaint = Paint()
+        val boldPaint = Paint()
+
+        var y = 50f
+        val margin = 50f
+        val pageWidth = pageInfo.pageWidth.toFloat()
+
+        // Header
+        titlePaint.textSize = 20f
+        titlePaint.textAlign = Paint.Align.CENTER
+        titlePaint.typeface = Typeface.create(Typeface.DEFAULT, Typeface.BOLD)
+        canvas.drawText("Relatório de Contas a Pagar", pageWidth / 2, y, titlePaint)
+        y += 30f
+
+        // Totals Summary Header
+        if (totals != null) {
+            paint.textSize = 10f
+            paint.textAlign = Paint.Align.LEFT
+            canvas.drawText("Total Pendente: ${String.format(localeBR, "%.2f", totals.outstanding ?: 0.0)}", margin, y, paint)
+            paint.textAlign = Paint.Align.RIGHT
+            canvas.drawText("Total Pago: ${String.format(localeBR, "%.2f", totals.paid ?: 0.0)}", pageWidth - margin, y, paint)
+            y += 25f
+        }
+        paint.textAlign = Paint.Align.LEFT
+
+        // Table Header
+        boldPaint.textSize = 10f
+        canvas.drawText("ID", margin, y, boldPaint)
+        canvas.drawText("Fornecedor", margin + 40f, y, boldPaint)
+        canvas.drawText("Origem", margin + 170f, y, boldPaint)
+        canvas.drawText("Venc.", margin + 300f, y, boldPaint)
+        
+        boldPaint.textAlign = Paint.Align.RIGHT
+        canvas.drawText("Valor", margin + 420f, y, boldPaint)
+        canvas.drawText("Pago", pageWidth - margin, y, boldPaint)
+        boldPaint.textAlign = Paint.Align.LEFT
+        
+        y += 10f
+        canvas.drawLine(margin, y, pageWidth - margin, y, paint)
+        y += 20f
+
+        // Content
+        paint.textSize = 9f
+        items.forEach { item ->
+            if (y > 800f) {
+                // Not handling multiple pages for simplicity
+            }
+            canvas.drawText(item.id?.toString() ?: "", margin, y, paint)
+
+            val supplier = supplierMap[item.supplierId] ?: item.supplierFullName ?: "N/A"
+            canvas.drawText(if (supplier.length > 25) supplier.substring(0, 22) + "..." else supplier, margin + 40f, y, paint)
+            
+            val desc = item.origin ?: ""
+            canvas.drawText(if (desc.length > 25) desc.substring(0, 22) + "..." else desc, margin + 170f, y, paint)
+            
+            canvas.drawText(formatDate(item.dueDate), margin + 300f, y, paint)
+            
+            paint.textAlign = Paint.Align.RIGHT
+            canvas.drawText(String.format(localeBR, "%.2f", item.value ?: 0.0), margin + 420f, y, paint)
+            canvas.drawText(String.format(localeBR, "%.2f", item.paidValue ?: 0.0), pageWidth - margin, y, paint)
+            paint.textAlign = Paint.Align.LEFT
+            
+            y += 20f
+        }
+
+        pdfDocument.finishPage(page)
+
+        val fileName = "relatorio_pagamentos.pdf"
+        val file = File(context.cacheDir, fileName)
+        try {
+            pdfDocument.writeTo(FileOutputStream(file))
+        } catch (e: Exception) {
+            e.printStackTrace()
+        } finally {
+            pdfDocument.close()
+        }
+
+        shareFile(context, file, "Relatório de Pagamentos")
     }
 
     fun generateAndShareBudgetPdf(

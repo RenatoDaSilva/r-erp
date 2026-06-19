@@ -224,6 +224,24 @@ data class SupabaseReceivableTotal(
     val paid: Double?
 )
 
+data class SupabasePayable(
+    val id: Int? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
+    @SerializedName("supplier_id") val supplierId: Int? = null,
+    @SerializedName("supplier_fullname") val supplierFullName: String? = null,
+    val origin: String? = null,
+    @SerializedName("purchase_id") val purchaseId: Int? = null,
+    val value: Double? = null,
+    @SerializedName("due_date") val dueDate: String? = null,
+    @SerializedName("paid_at") val paidAt: String? = null,
+    @SerializedName("paid_value") val paidValue: Double? = null
+)
+
+data class SupabasePayableTotal(
+    val outstanding: Double?,
+    val paid: Double?
+)
+
 data class SupabaseConfig(
     val id: Int? = null,
     @SerializedName("user_id") val userId: String? = null,
@@ -354,6 +372,24 @@ interface SupabaseService {
     @GET("receivables_totals")
     suspend fun getReceivablesTotals(): List<SupabaseReceivableTotal>
 
+    @GET("payables")
+    suspend fun getPayables(): List<SupabasePayable>
+
+    @GET("payables")
+    suspend fun getPayable(@Query("id") idFilter: String): List<SupabasePayable>
+
+    @POST("payables")
+    suspend fun createPayable(@Body payable: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
+
+    @PATCH("payables")
+    suspend fun updatePayable(
+        @Query("id") idFilter: String,
+        @Body payable: Map<String, @JvmSuppressWildcards Any>
+    ): Response<Unit>
+
+    @GET("payables_totals")
+    suspend fun getPayablesTotals(): List<SupabasePayableTotal>
+
     @GET("config")
     suspend fun getConfig(): List<SupabaseConfig>
 
@@ -477,6 +513,9 @@ interface SupabaseService {
 
     @POST("rpc/split_receivable")
     suspend fun splitReceivable(@Body body: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
+
+    @POST("rpc/split_payable")
+    suspend fun splitPayable(@Body body: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
 
     companion object {
         private const val BASE_URL = "https://euzmbicrbjpgcyrojvdm.supabase.co/rest/v1/"
