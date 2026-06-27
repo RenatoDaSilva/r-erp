@@ -129,6 +129,26 @@ data class ProductNested(
     val description: String? = null
 )
 
+data class OrderNested(
+    val client: ClientNested? = null
+)
+
+data class ClientNested(
+    @SerializedName("fullname") val fullName: String? = null
+)
+
+data class SupabaseToBuy(
+    val id: Int? = null,
+    @SerializedName("product_id") val productId: Int? = null,
+    val quantity: Double? = null,
+    @SerializedName("order_id") val orderId: Int? = null,
+    val log: List<String>? = null,
+    @SerializedName("check_date") val checkDate: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null,
+    val product: ProductNested? = null,
+    val order: OrderNested? = null
+)
+
 // Specific DTO for inserting items
 data class SupabaseBudgetItemRequest(
     @SerializedName("budget_id") val budgetId: Int?,
@@ -389,6 +409,22 @@ interface SupabaseService {
 
     @GET("payables_totals")
     suspend fun getPayablesTotals(): List<SupabasePayableTotal>
+
+    @GET("to_buy")
+    suspend fun getToBuy(
+        @Query("select") select: String = "*,product:products(description),order:orders(client:clients(fullname))",
+        @Query("check_date") checkDateFilter: String = "is.null",
+        @Query("quantity") quantityFilter: String = "gt.0"
+    ): List<SupabaseToBuy>
+
+    @POST("to_buy")
+    suspend fun createToBuy(@Body data: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
+
+    @PATCH("to_buy")
+    suspend fun updateToBuy(
+        @Query("id") idFilter: String,
+        @Body data: Map<String, @JvmSuppressWildcards Any>
+    ): Response<Unit>
 
     @GET("config")
     suspend fun getConfig(): List<SupabaseConfig>

@@ -111,6 +111,7 @@ fun MainScreen(sessionManager: SessionManager) {
         NavigationItem("Pedidos", Icons.AutoMirrored.Filled.Assignment),
         NavigationItem("Receber", Icons.Default.AttachMoney),
         NavigationItem("Pagar", Icons.Default.AttachMoney),
+        NavigationItem("A comprar", Icons.Default.ShoppingCart),
         NavigationItem("Configurações", Icons.Default.Settings),
     )
     var selectedItemIndex by rememberSaveable { mutableIntStateOf(0) }
@@ -121,6 +122,7 @@ fun MainScreen(sessionManager: SessionManager) {
     var isAddingPurchase by rememberSaveable { mutableStateOf(false) }
     var isAddingReceivable by rememberSaveable { mutableStateOf(false) }
     var isAddingPayable by rememberSaveable { mutableStateOf(false) }
+    var isAddingToBuy by rememberSaveable { mutableStateOf(false) }
 
     ModalNavigationDrawer(
         drawerState = drawerState,
@@ -140,6 +142,7 @@ fun MainScreen(sessionManager: SessionManager) {
                             isAddingPurchase = false
                             isAddingReceivable = false
                             isAddingPayable = false
+                            isAddingToBuy = false
                             scope.launch {
                                 drawerState.close()
                             }
@@ -171,6 +174,7 @@ fun MainScreen(sessionManager: SessionManager) {
                             isAddingPurchase = false
                             isAddingReceivable = false
                             isAddingPayable = false
+                            isAddingToBuy = false
                             scope.launch {
                                 drawerState.close()
                             }
@@ -216,6 +220,7 @@ fun MainScreen(sessionManager: SessionManager) {
                             isAddingPurchase -> "Nova Compra"
                             isAddingReceivable -> "Novo Recebimento"
                             isAddingPayable -> "Novo Pagamento"
+                            isAddingToBuy -> "Adicionar a Comprar"
                             selectedId != null && items[selectedItemIndex].title == "Clientes" -> "Dados do Cliente"
                             selectedId != null && items[selectedItemIndex].title == "Fornecedores" -> "Dados do Fornecedor"
                             selectedId != null && items[selectedItemIndex].title == "Produtos" -> "Dados do Produto"
@@ -380,6 +385,14 @@ fun MainScreen(sessionManager: SessionManager) {
                                 onAddPayable = { isAddingPayable = true },
                                 onPayableClick = { id -> selectedId = id }
                             )
+                        }
+                    }
+
+                    "A comprar" -> {
+                        if (isAddingToBuy) {
+                            ToBuyDetailScreen(onBack = { isAddingToBuy = false })
+                        } else {
+                            ToBuyScreen(onAddToBuy = { isAddingToBuy = true })
                         }
                     }
 
