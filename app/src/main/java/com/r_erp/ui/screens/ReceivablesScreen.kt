@@ -112,7 +112,7 @@ fun ReceivablesScreen(onAddReceivable: () -> Unit, onReceivableClick: (Int) -> U
                                (it.origin?.contains(searchQuery, ignoreCase = true) ?: false)
             val matchesStatus = (showOpen && it.paidAt == null) || (showPaid && it.paidAt != null)
             matchesSearch && matchesStatus
-        }
+        }.sortedBy { it.dueDate ?: "" }
     }
 
     fun loadData() {
