@@ -8,28 +8,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.Card
-import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FloatingActionButton
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.SupabaseService
 import com.r_erp.api.SupabaseServiceItem
@@ -41,6 +31,7 @@ import java.util.Locale
 fun ServicesScreen(onServiceClick: (Int) -> Unit) {
     val token = LocalToken.current
     val sessionManager = LocalSessionManager.current
+    val focusManager = LocalFocusManager.current
     var services by remember { mutableStateOf<List<SupabaseServiceItem>>(emptyList()) }
     var searchQuery by remember { mutableStateOf("") }
     var isLoading by remember { mutableStateOf(value = true) }
@@ -86,25 +77,33 @@ fun ServicesScreen(onServiceClick: (Int) -> Unit) {
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (!isLoading && errorMessage == null && services.isNotEmpty()) {
-                OutlinedTextField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                    placeholder = { Text("Filtrar por descrição...") },
-                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
-                    trailingIcon = {
-                        if (searchQuery.isNotEmpty()) {
-                            IconButton(onClick = { searchQuery = "" }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Limpar")
-                            }
+            // Keep the search field always in the composition for focus stability
+            OutlinedTextField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                placeholder = { Text("Filtrar por descrição...") },
+                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
+                trailingIcon = {
+                    if (searchQuery.isNotEmpty()) {
+                        IconButton(onClick = { searchQuery = "" }) {
+                            Icon(Icons.Default.Clear, contentDescription = "Limpar")
                         }
-                    },
-                    singleLine = true
-                )
-            }
+                    }
+                },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    imeAction = ImeAction.Search
+                ),
+                keyboardActions = KeyboardActions(
+                    onSearch = {
+                        focusManager.clearFocus()
+                    }
+                ),
+                enabled = !isLoading || services.isNotEmpty()
+            )
 
             Box(
                 modifier = Modifier
@@ -134,8 +133,14 @@ fun ServicesScreen(onServiceClick: (Int) -> Unit) {
                             .fillMaxSize()
                             .padding(horizontal = 16.dp)
                     ) {
-                        items(filteredServices) { service ->
-                            ServiceItem(service, onClick = { onServiceClick(service.id ?: 0) })
+                        items(
+                            items = filteredServices,
+                            key = { service: com.r_erp.api.SupabaseServiceItem -> service.id ?: 0 }
+                        ) { service: com.r_erp.api.SupabaseServiceItem ->
+                            ServiceItem(service, onClick = { 
+                                focusManager.clearFocus()
+                                onServiceClick(service.id ?: 0) 
+                            })
                         }
                     }
                 }
