@@ -1,5 +1,7 @@
 package com.r_erp.ui.screens
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
@@ -34,6 +36,7 @@ import com.r_erp.api.SupabasePurchase
 import com.r_erp.api.SupabaseService
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.io.InputStreamReader
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -50,10 +53,35 @@ fun PurchasesScreen(onAddPurchase: () -> Unit, onPurchaseClick: (Int) -> Unit) {
     var isLoading by remember { mutableStateOf(value = true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isScanningNfce by remember { mutableStateOf(false) }
-    var isPostingNfce by remember { mutableStateOf(false) }
+    var importedXmlData by remember { mutableStateOf<Map<String, Any>?>(null) }
+    var isPostingData by remember { mutableStateOf(false) }
 
     val listState = rememberLazyListState()
     val scope = rememberCoroutineScope()
+
+    val xmlPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.GetContent()
+    ) { uri ->
+        uri?.let {
+            try {
+                context.contentResolver.openInputStream(uri)?.use { inputStream ->
+                    val xml = InputStreamReader(inputStream).readText()
+                    val parsedData = parseNfeXml(xml)
+                    if (parsedData != null) {
+                        if (parsedData.containsKey("error")) {
+                            Toast.makeText(context, parsedData["error"] as String, Toast.LENGTH_LONG).show()
+                        } else {
+                            importedXmlData = parsedData
+                        }
+                    } else {
+                        Toast.makeText(context, "Erro ao interpretar XML", Toast.LENGTH_SHORT).show()
+                    }
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Erro ao abrir arquivo: ${e.message}", Toast.LENGTH_LONG).show()
+            }
+        }
+    }
 
     val supplierMap = remember(suppliers) { suppliers.associate { it.id to it.fullName } }
 
@@ -84,51 +112,57 @@ fun PurchasesScreen(onAddPurchase: () -> Unit, onPurchaseClick: (Int) -> Unit) {
         }
     }
 
+    val onDataExtracted: (Map<String, Any>) -> Unit = { data ->
+        isScanningNfce = false
+        importedXmlData = null
+        isPostingData = true
+        scope.launch {
+            try {
+                val response = supabaseService.buildPurchase(mapOf("p_payload" to data))
+                if (response.isSuccessful) {
+                    Toast.makeText(context, "Compra registrada com sucesso!", Toast.LENGTH_SHORT).show()
+                    loadData()
+                    delay(500)
+                    if (purchases.isNotEmpty()) {
+                        listState.animateScrollToItem(0)
+                    }
+                } else {
+                    val errorBody = response.errorBody()?.string() ?: ""
+                    val errorMessage = if (errorBody.contains("message")) {
+                        try {
+                            com.google.gson.JsonParser.parseString(errorBody).asJsonObject.get("message").asString
+                        } catch (e: Exception) {
+                            response.message()
+                        }
+                    } else {
+                        response.message()
+                    }
+                    Toast.makeText(context, "Erro: $errorMessage", Toast.LENGTH_LONG).show()
+                }
+            } catch (e: Exception) {
+                Toast.makeText(context, "Erro ao processar: ${e.message}", Toast.LENGTH_LONG).show()
+            } finally {
+                isPostingData = false
+            }
+        }
+    }
+
     LaunchedEffect(supabaseService) {
         loadData()
     }
 
+    if (importedXmlData != null) {
+        NfeProcessorView(
+            data = importedXmlData!!,
+            onFinished = onDataExtracted,
+            onCancel = { importedXmlData = null }
+        )
+        return
+    }
+
     if (isScanningNfce) {
         NfceScannerScreen(
-            onNfceDataExtracted = { data ->
-                isScanningNfce = false
-                isPostingNfce = true
-                scope.launch {
-                    try {
-                        val response = supabaseService.buildPurchase(mapOf("p_payload" to data))
-                        if (response.isSuccessful) {
-                            Toast.makeText(context, "Compra registrada com sucesso!", Toast.LENGTH_SHORT).show()
-                            
-                            // Refresh and scroll
-                            suppliers = supabaseService.getSuppliers()
-                            purchases = supabaseService.getPurchasesWithItems()
-                            
-                            // Since we don't have the new ID in the Response<Unit>, 
-                            // we just scroll to the top or the first item after refresh
-                            delay(500)
-                            if (purchases.isNotEmpty()) {
-                                listState.animateScrollToItem(0)
-                            }
-                        } else {
-                            val errorBody = response.errorBody()?.string() ?: ""
-                            val errorMessage = if (errorBody.contains("message")) {
-                                try {
-                                    com.google.gson.JsonParser.parseString(errorBody).asJsonObject.get("message").asString
-                                } catch (e: Exception) {
-                                    response.message()
-                                }
-                            } else {
-                                response.message()
-                            }
-                            Toast.makeText(context, "Erro: $errorMessage", Toast.LENGTH_LONG).show()
-                        }
-                    } catch (e: Exception) {
-                        Toast.makeText(context, "Erro ao processar: ${e.message}", Toast.LENGTH_LONG).show()
-                    } finally {
-                        isPostingNfce = false
-                    }
-                }
-            },
+            onNfceDataExtracted = onDataExtracted,
             onCancel = { isScanningNfce = false }
         )
         return
@@ -156,6 +190,13 @@ fun PurchasesScreen(onAddPurchase: () -> Unit, onPurchaseClick: (Int) -> Unit) {
                             isScanningNfce = true
                         }
                     )
+                    DropdownMenuItem(
+                        text = { Text("Ler XML...") },
+                        onClick = {
+                            showFabMenu = false
+                            xmlPickerLauncher.launch("*/*")
+                        }
+                    )
                 }
             }
         }
@@ -165,7 +206,7 @@ fun PurchasesScreen(onAddPurchase: () -> Unit, onPurchaseClick: (Int) -> Unit) {
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (isPostingNfce) {
+            if (isPostingData) {
                 LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
             }
 
