@@ -275,6 +275,11 @@ data class SupabaseConfig(
     @SerializedName("created_at") val createdAt: String? = null
 )
 
+data class SupabasePeriod(
+    @SerializedName("p_month") val month: Int?,
+    @SerializedName("p_year") val year: Int?
+)
+
 data class AuthResponse(
     @SerializedName("access_token") val accessToken: String,
     @SerializedName("refresh_token") val refreshToken: String? = null,
@@ -552,6 +557,12 @@ interface SupabaseService {
 
     @POST("rpc/split_payable")
     suspend fun splitPayable(@Body body: Map<String, @JvmSuppressWildcards Any>): Response<Unit>
+
+    @POST("rpc/oldest_period")
+    suspend fun oldestPeriod(@Body body: Map<String, String>): SupabasePeriod
+
+    @POST("rpc/close_month")
+    suspend fun closeMonth(@Body body: Map<String, String>): Response<String>
 
     companion object {
         private const val BASE_URL = "https://euzmbicrbjpgcyrojvdm.supabase.co/rest/v1/"

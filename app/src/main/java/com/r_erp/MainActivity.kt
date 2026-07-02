@@ -114,6 +114,7 @@ fun MainScreen(sessionManager: SessionManager) {
             NavigationItem("Receber", Icons.Default.AttachMoney),
             NavigationItem("Pagar", Icons.Default.AttachMoney),
             NavigationItem("A comprar", Icons.Default.ShoppingCart),
+            NavigationItem("Rotinas", Icons.Default.Build),
             NavigationItem("Configurações", Icons.Default.Settings),
         )
     }
@@ -397,6 +398,10 @@ fun MainScreen(sessionManager: SessionManager) {
                         } else {
                             ToBuyScreen(onAddToBuy = { isAddingToBuy = true })
                         }
+                    }
+
+                    "Rotinas" -> {
+                        RoutinesScreen()
                     }
 
                     "Configurações" -> {
