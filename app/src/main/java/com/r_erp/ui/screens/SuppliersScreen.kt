@@ -56,19 +56,22 @@ fun SuppliersScreen(onSupplierClick: (Int) -> Unit) {
         }
     }
 
-    fun loadSuppliers() {
-        isLoading = true
+    fun loadSuppliers(showSpinner: Boolean = true) {
+        if (showSpinner) isLoading = true
+        errorMessage = null
         scope.launch {
             try {
                 val fetchedSuppliers = supabaseService.getSuppliers()
                 suppliers = fetchedSuppliers.sortedBy { it.fullName?.lowercase() ?: "" }
                 isLoading = false
             } catch (e: Exception) {
-                if (e.message?.contains("composition") != true) {
-                    errorMessage = if (e.message?.contains("401") == true) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                val msg = e.message ?: e.toString()
+                if (!msg.contains("composition", ignoreCase = true)) {
+                    errorMessage = if (msg.contains("401")) {
                         "Sessão expirada. Por favor, saia e entre novamente."
                     } else {
-                        e.message ?: "Erro desconhecido"
+                        msg
                     }
                 }
                 isLoading = false
@@ -77,7 +80,7 @@ fun SuppliersScreen(onSupplierClick: (Int) -> Unit) {
     }
 
     LaunchedEffect(supabaseService) {
-        loadSuppliers()
+        loadSuppliers(showSpinner = suppliers.isEmpty())
     }
 
     Scaffold(
@@ -124,53 +127,58 @@ fun SuppliersScreen(onSupplierClick: (Int) -> Unit) {
                 modifier = Modifier
                     .fillMaxSize()
             ) {
-                if (isLoading) {
+                if (isLoading && suppliers.isEmpty()) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                } else if (errorMessage != null) {
+                } else if (errorMessage != null && suppliers.isEmpty()) {
                     Text(
                         text = errorMessage!!,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.Center),
                     )
-                } else if (suppliers.isEmpty()) {
+                } else if (suppliers.isEmpty() && !isLoading) {
                     Text(
                         text = "Nenhum fornecedor encontrado.",
                         modifier = Modifier.align(Alignment.Center),
                     )
-                } else if (filteredSuppliers.isEmpty()) {
+                } else if (filteredSuppliers.isEmpty() && !isLoading) {
                     Text(
                         text = "Nenhum fornecedor corresponde ao filtro.",
                         modifier = Modifier.align(Alignment.Center),
                     )
                 } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp)
-                    ) {
-                        items(
-                            items = filteredSuppliers,
-                            key = { supplier: com.r_erp.api.SupabaseSupplier -> supplier.id ?: 0 }
-                        ) { supplier: com.r_erp.api.SupabaseSupplier ->
-                            SupplierItem(
-                                supplier = supplier,
-                                onClick = { 
-                                    focusManager.clearFocus()
-                                    onSupplierClick(supplier.id ?: 0) 
-                                },
-                                onDelete = {
-                                    scope.launch {
-                                        try {
-                                            val response = supabaseService.deleteSupplier(idFilter = "eq.${supplier.id}")
-                                            if (!response.isSuccessful) throw retrofit2.HttpException(response)
-                                            Toast.makeText(context, "Fornecedor excluído", Toast.LENGTH_SHORT).show()
-                                            loadSuppliers()
-                                        } catch (e: Exception) {
-                                            Toast.makeText(context, "Erro ao excluir: ${e.message}", Toast.LENGTH_LONG).show()
+                    Column {
+                        if (isLoading) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp)
+                        ) {
+                            items(
+                                items = filteredSuppliers,
+                                key = { supplier: com.r_erp.api.SupabaseSupplier -> supplier.id ?: 0 }
+                            ) { supplier: com.r_erp.api.SupabaseSupplier ->
+                                SupplierItem(
+                                    supplier = supplier,
+                                    onClick = { 
+                                        focusManager.clearFocus()
+                                        onSupplierClick(supplier.id ?: 0) 
+                                    },
+                                    onDelete = {
+                                        scope.launch {
+                                            try {
+                                                val response = supabaseService.deleteSupplier(idFilter = "eq.${supplier.id}")
+                                                if (!response.isSuccessful) throw retrofit2.HttpException(response)
+                                                Toast.makeText(context, "Fornecedor excluído", Toast.LENGTH_SHORT).show()
+                                                loadSuppliers()
+                                            } catch (e: Exception) {
+                                                Toast.makeText(context, "Erro ao excluir: ${e.message}", Toast.LENGTH_LONG).show()
+                                            }
                                         }
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
                     }
                 }

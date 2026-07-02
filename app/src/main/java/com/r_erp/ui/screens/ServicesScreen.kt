@@ -51,14 +51,18 @@ fun ServicesScreen(onServiceClick: (Int) -> Unit) {
 
     LaunchedEffect(supabaseService) {
         try {
+            if (services.isEmpty()) isLoading = true
+            errorMessage = null
             services = supabaseService.getServices()
             isLoading = false
         } catch (e: Exception) {
-            if (e.message?.contains("composition") != true) {
-                errorMessage = if (e.message?.contains("401") == true) {
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            val msg = e.message ?: e.toString()
+            if (!msg.contains("composition", ignoreCase = true)) {
+                errorMessage = if (msg.contains("401")) {
                     "Sessão expirada. Por favor, saia e entre novamente."
                 } else {
-                    e.message ?: e.toString()
+                    msg
                 }
             }
             isLoading = false
@@ -109,38 +113,43 @@ fun ServicesScreen(onServiceClick: (Int) -> Unit) {
                 modifier = Modifier
                     .fillMaxSize()
             ) {
-                if (isLoading) {
+                if (isLoading && services.isEmpty()) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                } else if (errorMessage != null) {
+                } else if (errorMessage != null && services.isEmpty()) {
                     Text(
                         text = errorMessage!!,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.Center),
                     )
-                } else if (services.isEmpty()) {
+                } else if (services.isEmpty() && !isLoading) {
                     Text(
                         text = "Nenhum serviço encontrado.",
                         modifier = Modifier.align(Alignment.Center),
                     )
-                } else if (filteredServices.isEmpty()) {
+                } else if (filteredServices.isEmpty() && !isLoading) {
                     Text(
                         text = "Nenhum serviço corresponde ao filtro.",
                         modifier = Modifier.align(Alignment.Center),
                     )
                 } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp)
-                    ) {
-                        items(
-                            items = filteredServices,
-                            key = { service: com.r_erp.api.SupabaseServiceItem -> service.id ?: 0 }
-                        ) { service: com.r_erp.api.SupabaseServiceItem ->
-                            ServiceItem(service, onClick = { 
-                                focusManager.clearFocus()
-                                onServiceClick(service.id ?: 0) 
-                            })
+                    Column {
+                        if (isLoading) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp)
+                        ) {
+                            items(
+                                items = filteredServices,
+                                key = { service: com.r_erp.api.SupabaseServiceItem -> service.id ?: 0 }
+                            ) { service: com.r_erp.api.SupabaseServiceItem ->
+                                ServiceItem(service, onClick = { 
+                                    focusManager.clearFocus()
+                                    onServiceClick(service.id ?: 0) 
+                                })
+                            }
                         }
                     }
                 }

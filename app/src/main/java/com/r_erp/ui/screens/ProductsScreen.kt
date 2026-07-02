@@ -59,9 +59,9 @@ fun ProductsScreen(onProductClick: (Int) -> Unit) {
         }
     }
 
-    suspend fun refreshProducts(scrollToProductId: Int? = null) {
+    suspend fun refreshProducts(scrollToProductId: Int? = null, showSpinner: Boolean = true) {
         try {
-            isLoading = true
+            if (showSpinner) isLoading = true
             products = supabaseService.getProducts()
             errorMessage = null
             
@@ -72,14 +72,18 @@ fun ProductsScreen(onProductClick: (Int) -> Unit) {
                 }
             }
         } catch (e: Exception) {
-            errorMessage = e.message ?: e.toString()
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            val msg = e.message ?: e.toString()
+            if (!msg.contains("composition", ignoreCase = true)) {
+                errorMessage = msg
+            }
         } finally {
             isLoading = false
         }
     }
 
     LaunchedEffect(supabaseService) {
-        refreshProducts()
+        refreshProducts(showSpinner = products.isEmpty())
     }
 
     var showAdjustDialog by remember { mutableStateOf(false) }
@@ -183,48 +187,53 @@ fun ProductsScreen(onProductClick: (Int) -> Unit) {
                 modifier = Modifier
                     .fillMaxSize()
             ) {
-                if (isLoading) {
+                if (isLoading && products.isEmpty()) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                } else if (errorMessage != null) {
+                } else if (errorMessage != null && products.isEmpty()) {
                     Text(
                         text = errorMessage!!,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.Center),
                     )
-                } else if (products.isEmpty()) {
+                } else if (products.isEmpty() && !isLoading) {
                     Text(
                         text = "Nenhum produto encontrado.",
                         modifier = Modifier.align(Alignment.Center),
                     )
-                } else if (filteredProducts.isEmpty()) {
+                } else if (filteredProducts.isEmpty() && !isLoading) {
                     Text(
                         text = "Nenhum produto corresponde ao filtro.",
                         modifier = Modifier.align(Alignment.Center),
                     )
                 } else {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp)
-                    ) {
-                        items(
-                            items = filteredProducts,
-                            key = { product: SupabaseProduct -> product.id ?: 0 }
-                        ) { product: SupabaseProduct ->
-                            ProductItem(
-                                product = product,
-                                onClick = { 
-                                    focusManager.clearFocus()
-                                    onProductClick(product.id ?: 0) 
-                                },
-                                onAdjustStock = { type ->
-                                    adjustmentProduct = product
-                                    adjustmentType = type
-                                    adjustmentValue = "1"
-                                    showAdjustDialog = true
-                                }
-                            )
+                    Column {
+                        if (isLoading) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp)
+                        ) {
+                            items(
+                                items = filteredProducts,
+                                key = { product: SupabaseProduct -> product.id ?: 0 }
+                            ) { product: SupabaseProduct ->
+                                ProductItem(
+                                    product = product,
+                                    onClick = { 
+                                        focusManager.clearFocus()
+                                        onProductClick(product.id ?: 0) 
+                                    },
+                                    onAdjustStock = { type ->
+                                        adjustmentProduct = product
+                                        adjustmentType = type
+                                        adjustmentValue = "1"
+                                        showAdjustDialog = true
+                                    }
+                                )
+                            }
                         }
                     }
                 }

@@ -24,6 +24,7 @@ import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -81,7 +82,7 @@ fun AgendaScreen(onAddAgendaItem: () -> Unit) {
     }
 
     LaunchedEffect(selectedDateMillis, token) {
-        isLoading = true
+        if (agendaItems.isEmpty()) isLoading = true
         errorMessage = null
         try {
             val apiService = ApiService.create()
@@ -96,8 +97,10 @@ fun AgendaScreen(onAddAgendaItem: () -> Unit) {
             )
             isLoading = false
         } catch (e: Exception) {
-            if (e.message?.contains("composition") != true) {
-                errorMessage = e.message ?: "Erro ao carregar agenda"
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            val msg = e.message ?: e.toString()
+            if (!msg.contains("composition", ignoreCase = true)) {
+                errorMessage = msg
             }
             isLoading = false
         }
@@ -184,27 +187,32 @@ fun AgendaScreen(onAddAgendaItem: () -> Unit) {
                         )
                     }
             ) {
-                if (isLoading) {
+                if (isLoading && agendaItems.isEmpty()) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                } else if (errorMessage != null) {
+                } else if (errorMessage != null && agendaItems.isEmpty()) {
                     Text(
                         text = errorMessage!!,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.Center).padding(16.dp)
                     )
-                } else if (agendaItems.isEmpty()) {
+                } else if (agendaItems.isEmpty() && !isLoading) {
                     Text(
                         text = "Nenhum compromisso para esta data.",
                         modifier = Modifier.align(Alignment.Center)
                     )
                 } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        items(agendaItems) { item ->
-                            AgendaItemCard(item)
+                    Column {
+                        if (isLoading) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            items(agendaItems) { item ->
+                                AgendaItemCard(item)
+                            }
                         }
                     }
                 }

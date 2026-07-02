@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.ContentScale
@@ -30,16 +31,16 @@ fun ConfigScreen(onBack: () -> Unit) {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     
-    var configId by remember { mutableStateOf<Int?>(null) }
-    var companyName by remember { mutableStateOf("") }
-    var companyAddress by remember { mutableStateOf("") }
-    var companyPhone by remember { mutableStateOf("") }
-    var cnpjCpf by remember { mutableStateOf("") }
-    var defaultMessageBudget by remember { mutableStateOf("") }
-    var defaultMessageOrder by remember { mutableStateOf("") }
-    var logo by remember { mutableStateOf<String?>(null) }
+    var configId by rememberSaveable { mutableStateOf<Int?>(null) }
+    var companyName by rememberSaveable { mutableStateOf("") }
+    var companyAddress by rememberSaveable { mutableStateOf("") }
+    var companyPhone by rememberSaveable { mutableStateOf("") }
+    var cnpjCpf by rememberSaveable { mutableStateOf("") }
+    var defaultMessageBudget by rememberSaveable { mutableStateOf("") }
+    var defaultMessageOrder by rememberSaveable { mutableStateOf("") }
+    var logo by rememberSaveable { mutableStateOf<String?>(null) }
 
-    var isLoading by remember { mutableStateOf(true) }
+    var isLoading by rememberSaveable { mutableStateOf(true) }
     var isSaving by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var searchQuery by remember { mutableStateOf("") }
@@ -48,6 +49,7 @@ fun ConfigScreen(onBack: () -> Unit) {
 
     LaunchedEffect(supabaseService) {
         try {
+            errorMessage = null
             val configs = supabaseService.getConfig()
             if (configs.isNotEmpty()) {
                 val cfg = configs.first()
@@ -62,7 +64,11 @@ fun ConfigScreen(onBack: () -> Unit) {
             }
             isLoading = false
         } catch (e: Exception) {
-            errorMessage = e.message ?: e.toString()
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            val msg = e.message ?: e.toString()
+            if (!msg.contains("composition", ignoreCase = true)) {
+                errorMessage = msg
+            }
             isLoading = false
         }
     }
@@ -102,6 +108,8 @@ fun ConfigScreen(onBack: () -> Unit) {
     )
 
     val filteredFields = fields.filter { it.first.contains(searchQuery, ignoreCase = true) }
+
+    val hasData = configId != null
 
     Column(
         modifier = Modifier
@@ -170,7 +178,7 @@ fun ConfigScreen(onBack: () -> Unit) {
                     }
                 },
                 modifier = Modifier.weight(1f),
-                enabled = !isSaving
+                enabled = !isSaving && !isLoading // Disable while loading too
             ) {
                 if (isSaving) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
@@ -204,15 +212,16 @@ fun ConfigScreen(onBack: () -> Unit) {
                     }
                 }
             },
-            singleLine = true
+            singleLine = true,
+            enabled = !isLoading || hasData
         )
 
         Spacer(modifier = Modifier.height(16.dp))
 
         Box(modifier = Modifier.fillMaxSize()) {
-            if (isLoading) {
+            if (isLoading && !hasData) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (errorMessage != null) {
+            } else if (errorMessage != null && !hasData) {
                 Text(
                     text = errorMessage!!,
                     color = MaterialTheme.colorScheme.error,
@@ -312,6 +321,11 @@ fun ConfigScreen(onBack: () -> Unit) {
                             HorizontalDivider()
                         }
                     }
+                }
+                
+                // If loading in background, show a linear progress at top
+                if (isLoading && hasData) {
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().align(Alignment.TopCenter))
                 }
             }
         }

@@ -41,6 +41,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -100,20 +101,22 @@ data class NavigationItem(
 fun MainScreen(sessionManager: SessionManager) {
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
-    val items = listOf(
-        NavigationItem("Agenda", Icons.Default.Event),
-        NavigationItem("Clientes", Icons.Default.Person),
-        NavigationItem("Fornecedores", Icons.Default.Business),
-        NavigationItem("Produtos", Icons.Default.ShoppingCart),
-        NavigationItem("Serviços", Icons.Default.Build),
-        NavigationItem("Compras", Icons.Default.LocalMall),
-        NavigationItem("Orçamentos", Icons.Default.Description),
-        NavigationItem("Pedidos", Icons.AutoMirrored.Filled.Assignment),
-        NavigationItem("Receber", Icons.Default.AttachMoney),
-        NavigationItem("Pagar", Icons.Default.AttachMoney),
-        NavigationItem("A comprar", Icons.Default.ShoppingCart),
-        NavigationItem("Configurações", Icons.Default.Settings),
-    )
+    val items = remember {
+        listOf(
+            NavigationItem("Agenda", Icons.Default.Event),
+            NavigationItem("Clientes", Icons.Default.Person),
+            NavigationItem("Fornecedores", Icons.Default.Business),
+            NavigationItem("Produtos", Icons.Default.ShoppingCart),
+            NavigationItem("Serviços", Icons.Default.Build),
+            NavigationItem("Compras", Icons.Default.LocalMall),
+            NavigationItem("Orçamentos", Icons.Default.Description),
+            NavigationItem("Pedidos", Icons.AutoMirrored.Filled.Assignment),
+            NavigationItem("Receber", Icons.Default.AttachMoney),
+            NavigationItem("Pagar", Icons.Default.AttachMoney),
+            NavigationItem("A comprar", Icons.Default.ShoppingCart),
+            NavigationItem("Configurações", Icons.Default.Settings),
+        )
+    }
     var selectedItemIndex by rememberSaveable { mutableIntStateOf(0) }
     var selectedId by rememberSaveable { mutableStateOf<Int?>(null) }
     var isAddingAgendaItem by rememberSaveable { mutableStateOf(false) }

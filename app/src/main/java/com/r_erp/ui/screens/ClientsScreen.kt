@@ -57,19 +57,22 @@ fun ClientsScreen(onClientClick: (Int) -> Unit) {
         }
     }
 
-    fun loadClients() {
-        isLoading = true
+    fun loadClients(showSpinner: Boolean = true) {
+        if (showSpinner) isLoading = true
+        errorMessage = null
         scope.launch {
             try {
                 val fetchedClients = supabaseService.getClients()
                 clients = fetchedClients.sortedBy { it.fullName?.lowercase() ?: "" }
                 isLoading = false
             } catch (e: Exception) {
-                if (e.message?.contains("composition") != true) {
-                    errorMessage = if (e.message?.contains("401") == true) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                val msg = e.message ?: e.toString()
+                if (!msg.contains("composition", ignoreCase = true)) {
+                    errorMessage = if (msg.contains("401")) {
                         "Sessão expirada. Por favor, saia e entre novamente."
                     } else {
-                        e.message ?: "Erro desconhecido"
+                        msg
                     }
                 }
                 isLoading = false
@@ -78,7 +81,7 @@ fun ClientsScreen(onClientClick: (Int) -> Unit) {
     }
 
     LaunchedEffect(supabaseService) {
-        loadClients()
+        loadClients(showSpinner = clients.isEmpty())
     }
 
     Scaffold(
@@ -125,53 +128,58 @@ fun ClientsScreen(onClientClick: (Int) -> Unit) {
                 modifier = Modifier
                     .fillMaxSize()
             ) {
-                if (isLoading) {
+                if (isLoading && clients.isEmpty()) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                } else if (errorMessage != null) {
+                } else if (errorMessage != null && clients.isEmpty()) {
                     Text(
                         text = errorMessage!!,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.Center),
                     )
-                } else if (clients.isEmpty()) {
+                } else if (clients.isEmpty() && !isLoading) {
                     Text(
                         text = "Nenhum cliente encontrado.",
                         modifier = Modifier.align(Alignment.Center),
                     )
-                } else if (filteredClients.isEmpty()) {
+                } else if (filteredClients.isEmpty() && !isLoading) {
                     Text(
                         text = "Nenhum cliente corresponde ao filtro.",
                         modifier = Modifier.align(Alignment.Center),
                     )
                 } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp)
-                    ) {
-                        items(
-                            items = filteredClients,
-                            key = { client: SupabaseClient -> client.id ?: 0 }
-                        ) { client: SupabaseClient ->
-                            ClientItem(
-                                client = client,
-                                onClick = { 
-                                    focusManager.clearFocus()
-                                    onClientClick(client.id ?: 0) 
-                                },
-                                onDelete = {
-                                    scope.launch {
-                                        try {
-                                            val response = supabaseService.deleteClient(idFilter = "eq.${client.id}")
-                                            if (!response.isSuccessful) throw retrofit2.HttpException(response)
-                                            Toast.makeText(context, "Cliente excluído", Toast.LENGTH_SHORT).show()
-                                            loadClients()
-                                        } catch (e: Exception) {
-                                            Toast.makeText(context, "Erro ao excluir: ${e.message}", Toast.LENGTH_LONG).show()
+                    Column {
+                        if (isLoading) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp)
+                        ) {
+                            items(
+                                items = filteredClients,
+                                key = { client: SupabaseClient -> client.id ?: 0 }
+                            ) { client: SupabaseClient ->
+                                ClientItem(
+                                    client = client,
+                                    onClick = { 
+                                        focusManager.clearFocus()
+                                        onClientClick(client.id ?: 0) 
+                                    },
+                                    onDelete = {
+                                        scope.launch {
+                                            try {
+                                                val response = supabaseService.deleteClient(idFilter = "eq.${client.id}")
+                                                if (!response.isSuccessful) throw retrofit2.HttpException(response)
+                                                Toast.makeText(context, "Cliente excluído", Toast.LENGTH_SHORT).show()
+                                                loadClients()
+                                            } catch (e: Exception) {
+                                                Toast.makeText(context, "Erro ao excluir: ${e.message}", Toast.LENGTH_LONG).show()
+                                            }
                                         }
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
                     }
                 }

@@ -113,8 +113,10 @@ fun PayableDetailsScreen(payableId: Int, onBack: () -> Unit) {
             }
             isLoading = false
         } catch (e: Exception) {
-            if (e.message?.contains("composition") != true) {
-                errorMessage = e.message ?: "Erro ao carregar dados"
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            val msg = e.message ?: e.toString()
+            if (!msg.contains("composition", ignoreCase = true)) {
+                errorMessage = msg
             }
             isLoading = false
         }
