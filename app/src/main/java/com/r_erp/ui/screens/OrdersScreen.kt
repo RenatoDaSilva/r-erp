@@ -28,6 +28,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -37,6 +38,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -52,6 +54,7 @@ import com.r_erp.api.SupabaseOrder
 import com.r_erp.api.SupabaseOrderItem
 import com.r_erp.api.SupabaseService
 import com.r_erp.utils.PdfUtils
+import kotlinx.coroutines.launch
 import java.text.SimpleDateFormat
 import java.util.Locale
 import java.util.TimeZone
@@ -60,6 +63,7 @@ import java.util.TimeZone
 fun OrdersScreen(onAddOrder: () -> Unit, onOrderClick: (Int) -> Unit) {
     val token = LocalToken.current
     val sessionManager = LocalSessionManager.current
+    val scope = rememberCoroutineScope()
     val supabaseService = remember(token) { SupabaseService.create(token, sessionManager) }
     var orders by remember { mutableStateOf<List<SupabaseOrder>>(emptyList()) }
     var clients by remember { mutableStateOf<List<SupabaseClient>>(emptyList()) }
@@ -81,21 +85,31 @@ fun OrdersScreen(onAddOrder: () -> Unit, onOrderClick: (Int) -> Unit) {
         }
     }
 
-    LaunchedEffect(supabaseService) {
-        try {
-            clients = supabaseService.getClients()
-            orders = supabaseService.getOrdersWithItems()
-            val configs = supabaseService.getConfig()
-            if (configs.isNotEmpty()) {
-                config = configs.first()
+    fun loadOrders(showSpinner: Boolean = true) {
+        if (showSpinner) isLoading = true
+        errorMessage = null
+        scope.launch {
+            try {
+                clients = supabaseService.getClients()
+                orders = supabaseService.getOrdersWithItems()
+                val configs = supabaseService.getConfig()
+                if (configs.isNotEmpty()) {
+                    config = configs.first()
+                }
+                isLoading = false
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                val msg = e.message ?: e.toString()
+                if (!msg.contains("composition", ignoreCase = true)) {
+                    errorMessage = msg
+                }
+                isLoading = false
             }
-            isLoading = false
-        } catch (e: Exception) {
-            if (e.message?.contains("composition") != true) {
-                errorMessage = e.message ?: e.toString()
-            }
-            isLoading = false
         }
+    }
+
+    LaunchedEffect(supabaseService) {
+        loadOrders(showSpinner = orders.isEmpty())
     }
 
     Scaffold(
@@ -110,7 +124,7 @@ fun OrdersScreen(onAddOrder: () -> Unit, onOrderClick: (Int) -> Unit) {
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (!isLoading && errorMessage == null && orders.isNotEmpty()) {
+            if (orders.isNotEmpty() || searchQuery.isNotEmpty()) {
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -134,37 +148,42 @@ fun OrdersScreen(onAddOrder: () -> Unit, onOrderClick: (Int) -> Unit) {
                 modifier = Modifier
                     .fillMaxSize()
             ) {
-                if (isLoading) {
+                if (isLoading && orders.isEmpty()) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                } else if (errorMessage != null) {
+                } else if (errorMessage != null && orders.isEmpty()) {
                     Text(
                         text = errorMessage!!,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.Center),
                     )
-                } else if (orders.isEmpty()) {
+                } else if (orders.isEmpty() && !isLoading) {
                     Text(
                         text = "Nenhum pedido encontrado.",
                         modifier = Modifier.align(Alignment.Center),
                     )
-                } else if (filteredOrders.isEmpty()) {
+                } else if (filteredOrders.isEmpty() && !isLoading) {
                     Text(
                         text = "Nenhum pedido corresponde ao filtro.",
                         modifier = Modifier.align(Alignment.Center),
                     )
                 } else {
-                    LazyColumn(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp)
-                    ) {
-                        items(filteredOrders) { order ->
-                            OrderItem(
-                                order, 
-                                clientName = order.clientName ?: clientMap[order.clientId] ?: "N/A",
-                                config = config,
-                                onClick = { onOrderClick(order.id ?: 0) }
-                            )
+                    Column {
+                        if (isLoading) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp)
+                        ) {
+                            items(filteredOrders) { order ->
+                                OrderItem(
+                                    order, 
+                                    clientName = order.clientName ?: clientMap[order.clientId] ?: "N/A",
+                                    config = config,
+                                    onClick = { onOrderClick(order.id ?: 0) }
+                                )
+                            }
                         }
                     }
                 }

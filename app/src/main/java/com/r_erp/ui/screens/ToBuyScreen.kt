@@ -24,6 +24,7 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -59,21 +60,26 @@ fun ToBuyScreen(onAddToBuy: () -> Unit) {
     var isLoading by remember { mutableStateOf(true) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    fun loadData() {
-        isLoading = true
+    fun loadData(showSpinner: Boolean = true) {
+        if (showSpinner) isLoading = true
+        errorMessage = null
         scope.launch {
             try {
                 items = supabaseService.getToBuy()
                 isLoading = false
             } catch (e: Exception) {
-                errorMessage = e.message ?: e.toString()
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                val msg = e.message ?: e.toString()
+                if (!msg.contains("composition", ignoreCase = true)) {
+                    errorMessage = msg
+                }
                 isLoading = false
             }
         }
     }
 
     LaunchedEffect(supabaseService) {
-        loadData()
+        loadData(showSpinner = items.isEmpty())
     }
 
     Scaffold(
@@ -84,34 +90,39 @@ fun ToBuyScreen(onAddToBuy: () -> Unit) {
         }
     ) { padding ->
         Box(modifier = Modifier.fillMaxSize().padding(padding)) {
-            if (isLoading) {
+            if (isLoading && items.isEmpty()) {
                 CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-            } else if (errorMessage != null) {
+            } else if (errorMessage != null && items.isEmpty()) {
                 Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center).padding(16.dp))
-            } else if (items.isEmpty()) {
+            } else if (items.isEmpty() && !isLoading) {
                 Text(text = "Nada para comprar.", modifier = Modifier.align(Alignment.Center))
             } else {
-                LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
-                    items(items) { item ->
-                        ToBuyItem(
-                            item = item,
-                            onBaixar = {
-                                scope.launch {
-                                    try {
-                                        val newLog = (item.log ?: emptyList()) + "Baixa manual"
-                                        val updateData = mapOf(
-                                            "check_date" to SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).format(Date()),
-                                            "log" to newLog
-                                        )
-                                        supabaseService.updateToBuy(idFilter = "eq.${item.id}", data = updateData)
-                                        // Update local state to hide card
-                                        items = items.filter { it.id != item.id }
-                                    } catch (e: Exception) {
-                                        // Handle error
+                Column {
+                    if (isLoading) {
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                    }
+                    LazyColumn(modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
+                        items(items) { item ->
+                            ToBuyItem(
+                                item = item,
+                                onBaixar = {
+                                    scope.launch {
+                                        try {
+                                            val newLog = (item.log ?: emptyList()) + "Baixa manual"
+                                            val updateData = mapOf(
+                                                "check_date" to SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).format(Date()),
+                                                "log" to newLog
+                                            )
+                                            supabaseService.updateToBuy(idFilter = "eq.${item.id}", data = updateData)
+                                            // Update local state to hide card
+                                            items = items.filter { it.id != item.id }
+                                        } catch (e: Exception) {
+                                            // Handle error
+                                        }
                                     }
                                 }
-                            }
-                        )
+                            )
+                        }
                     }
                 }
             }

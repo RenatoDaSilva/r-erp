@@ -96,8 +96,11 @@ fun NfeProcessorView(
             
             isProcessing = false
         } catch (e: Exception) {
-            Log.e("NfeProcessor", "Error in initial processing", e)
-            statusMessage = "Erro: ${e.message}"
+            if (e is kotlinx.coroutines.CancellationException) throw e
+            val msg = e.message ?: e.toString()
+            if (!msg.contains("composition", ignoreCase = true)) {
+                statusMessage = "Erro: $msg"
+            }
             isProcessing = false
         }
     }

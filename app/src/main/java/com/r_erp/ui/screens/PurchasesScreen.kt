@@ -96,16 +96,19 @@ fun PurchasesScreen(onAddPurchase: () -> Unit, onPurchaseClick: (Int) -> Unit) {
         }
     }
 
-    fun loadData() {
-        isLoading = true
+    fun loadData(showSpinner: Boolean = true) {
+        if (showSpinner) isLoading = true
+        errorMessage = null
         scope.launch {
             try {
                 suppliers = supabaseService.getSuppliers()
                 purchases = supabaseService.getPurchasesWithItems()
                 isLoading = false
             } catch (e: Exception) {
-                if (e.message?.contains("composition") != true) {
-                    errorMessage = e.message ?: e.toString()
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                val msg = e.message ?: e.toString()
+                if (!msg.contains("composition", ignoreCase = true)) {
+                    errorMessage = msg
                 }
                 isLoading = false
             }
@@ -148,7 +151,7 @@ fun PurchasesScreen(onAddPurchase: () -> Unit, onPurchaseClick: (Int) -> Unit) {
     }
 
     LaunchedEffect(supabaseService) {
-        loadData()
+        loadData(showSpinner = purchases.isEmpty())
     }
 
     if (importedXmlData != null) {
@@ -234,37 +237,42 @@ fun PurchasesScreen(onAddPurchase: () -> Unit, onPurchaseClick: (Int) -> Unit) {
                 modifier = Modifier
                     .fillMaxSize()
             ) {
-                if (isLoading) {
+                if (isLoading && purchases.isEmpty()) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                } else if (errorMessage != null) {
+                } else if (errorMessage != null && purchases.isEmpty()) {
                     Text(
                         text = errorMessage!!,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.Center),
                     )
-                } else if (purchases.isEmpty()) {
+                } else if (purchases.isEmpty() && !isLoading) {
                     Text(
                         text = "Nenhuma compra encontrada.",
                         modifier = Modifier.align(Alignment.Center),
                     )
-                } else if (filteredPurchases.isEmpty()) {
+                } else if (filteredPurchases.isEmpty() && !isLoading) {
                     Text(
                         text = "Nenhum compra corresponde ao filtro.",
                         modifier = Modifier.align(Alignment.Center),
                     )
                 } else {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp)
-                    ) {
-                        items(filteredPurchases) { purchase ->
-                            PurchaseItem(
-                                purchase, 
-                                supplierName = purchase.supplierName ?: supplierMap[purchase.supplierId] ?: "N/A",
-                                onClick = { onPurchaseClick(purchase.id ?: 0) }
-                            )
+                    Column {
+                        if (isLoading) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp)
+                        ) {
+                            items(filteredPurchases) { purchase ->
+                                PurchaseItem(
+                                    purchase, 
+                                    supplierName = purchase.supplierName ?: supplierMap[purchase.supplierId] ?: "N/A",
+                                    onClick = { onPurchaseClick(purchase.id ?: 0) }
+                                )
+                            }
                         }
                     }
                 }

@@ -38,6 +38,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -117,8 +118,9 @@ fun ReceivablesScreen(onAddReceivable: () -> Unit, onReceivableClick: (Int) -> U
         }.sortedBy { it.dueDate ?: "" }
     }
 
-    fun loadData() {
-        isLoading = true
+    fun loadData(showSpinner: Boolean = true) {
+        if (showSpinner) isLoading = true
+        errorMessage = null
         scope.launch {
             try {
                 clients = supabaseService.getClients()
@@ -127,8 +129,10 @@ fun ReceivablesScreen(onAddReceivable: () -> Unit, onReceivableClick: (Int) -> U
                 if (totalsList.isNotEmpty()) totals = totalsList[0]
                 isLoading = false
             } catch (e: Exception) {
-                if (e.message?.contains("composition") != true) {
-                    errorMessage = e.message ?: e.toString()
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                val msg = e.message ?: e.toString()
+                if (!msg.contains("composition", ignoreCase = true)) {
+                    errorMessage = msg
                 }
                 isLoading = false
             }
@@ -136,7 +140,7 @@ fun ReceivablesScreen(onAddReceivable: () -> Unit, onReceivableClick: (Int) -> U
     }
 
     LaunchedEffect(supabaseService) {
-        loadData()
+        loadData(showSpinner = receivables.isEmpty())
     }
 
     Scaffold(
@@ -202,39 +206,44 @@ fun ReceivablesScreen(onAddReceivable: () -> Unit, onReceivableClick: (Int) -> U
             }
 
             Box(modifier = Modifier.fillMaxSize()) {
-                if (isLoading) {
+                if (isLoading && receivables.isEmpty()) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                } else if (errorMessage != null) {
+                } else if (errorMessage != null && receivables.isEmpty()) {
                     Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error, modifier = Modifier.align(Alignment.Center))
                 } else {
-                    LazyColumn(
-                        modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
-                    ) {
-                        items(filteredReceivables) { receivable ->
-                            ReceivableItem(
-                                receivable = receivable,
-                                clientName = clientMap[receivable.clientId] ?: "N/A",
-                                onClick = { if (receivable.paidAt == null) onReceivableClick(receivable.id ?: 0) },
-                                onBaixar = {
-                                    showBaixarDialog = receivable
-                                    paidValueInput = String.format(Locale.US, "%.2f", receivable.value ?: 0.0)
-                                },
-                                onDateLongClick = {
-                                    if (receivable.paidAt == null) {
-                                        showDatePickerFor = receivable
+                    Column {
+                        if (isLoading) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
+                        LazyColumn(
+                            modifier = Modifier.fillMaxSize().padding(horizontal = 16.dp)
+                        ) {
+                            items(filteredReceivables) { receivable ->
+                                ReceivableItem(
+                                    receivable = receivable,
+                                    clientName = clientMap[receivable.clientId] ?: "N/A",
+                                    onClick = { if (receivable.paidAt == null) onReceivableClick(receivable.id ?: 0) },
+                                    onBaixar = {
+                                        showBaixarDialog = receivable
+                                        paidValueInput = String.format(Locale.US, "%.2f", receivable.value ?: 0.0)
+                                    },
+                                    onDateLongClick = {
+                                        if (receivable.paidAt == null) {
+                                            showDatePickerFor = receivable
+                                        }
+                                    },
+                                    onParcelar = {
+                                        showParcelarDialog = receivable
+                                        splitEntryFee = "0.00"
+                                        splitInstallments = 1
+                                        splitFirstDate = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
+                                    },
+                                    onPrint = {
+                                        // Filtered records are those shown in the screen
+                                        PdfUtils.generateAndShareReceivablesReport(context, filteredReceivables, clientMap, totals)
                                     }
-                                },
-                                onParcelar = {
-                                    showParcelarDialog = receivable
-                                    splitEntryFee = "0.00"
-                                    splitInstallments = 1
-                                    splitFirstDate = SimpleDateFormat("yyyy-MM-dd", Locale.US).format(Date())
-                                },
-                                onPrint = {
-                                    // Filtered records are those shown in the screen
-                                    PdfUtils.generateAndShareReceivablesReport(context, filteredReceivables, clientMap, totals)
-                                }
-                            )
+                                )
+                            }
                         }
                     }
                 }

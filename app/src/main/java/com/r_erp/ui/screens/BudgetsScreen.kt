@@ -29,6 +29,7 @@ import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -91,8 +92,9 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
         }
     }
 
-    fun loadBudgets() {
-        isLoading = true
+    fun loadBudgets(showSpinner: Boolean = true) {
+        if (showSpinner) isLoading = true
+        errorMessage = null
         scope.launch {
             try {
                 clients = supabaseService.getClients()
@@ -103,8 +105,10 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
                 }
                 isLoading = false
             } catch (e: Exception) {
-                if (e.message?.contains("composition") != true) {
-                    errorMessage = e.message ?: e.toString()
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                val msg = e.message ?: e.toString()
+                if (!msg.contains("composition", ignoreCase = true)) {
+                    errorMessage = msg
                 }
                 isLoading = false
             }
@@ -112,7 +116,7 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
     }
 
     LaunchedEffect(supabaseService) {
-        loadBudgets()
+        loadBudgets(showSpinner = budgets.isEmpty())
     }
 
     LaunchedEffect(budgets) {
@@ -137,7 +141,7 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
                 .fillMaxSize()
                 .padding(padding)
         ) {
-            if (!isLoading && errorMessage == null && budgets.isNotEmpty()) {
+            if (budgets.isNotEmpty() || searchQuery.isNotEmpty()) {
                 OutlinedTextField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
@@ -161,54 +165,59 @@ fun BudgetsScreen(onAddBudget: () -> Unit, onBudgetClick: (Int) -> Unit) {
                 modifier = Modifier
                     .fillMaxSize()
             ) {
-                if (isLoading) {
+                if (isLoading && budgets.isEmpty()) {
                     CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
-                } else if (errorMessage != null) {
+                } else if (errorMessage != null && budgets.isEmpty()) {
                     Text(
                         text = errorMessage!!,
                         color = MaterialTheme.colorScheme.error,
                         modifier = Modifier.align(Alignment.Center),
                     )
-                } else if (budgets.isEmpty()) {
+                } else if (budgets.isEmpty() && !isLoading) {
                     Text(
                         text = "Nenhum orçamento encontrado.",
                         modifier = Modifier.align(Alignment.Center),
                     )
-                } else if (filteredBudgets.isEmpty()) {
+                } else if (filteredBudgets.isEmpty() && !isLoading) {
                     Text(
                         text = "Nenhum orçamento corresponde ao filtro.",
                         modifier = Modifier.align(Alignment.Center),
                     )
                 } else {
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(horizontal = 16.dp)
-                    ) {
-                        items(filteredBudgets) { budget ->
-                            BudgetItem(
-                                budget, 
-                                clientName = budget.clientName ?: clientMap[budget.clientId] ?: "N/A",
-                                config = config,
-                                onClick = { onBudgetClick(budget.id ?: 0) },
-                                onCloseOrder = {
-                                    scope.launch {
-                                        try {
-                                            val result = supabaseService.createOrderFromBudget(mapOf("budget_id" to (budget.id ?: 0)))
-                                            if (result == -1) {
-                                                Toast.makeText(context, "Já existe um pedido gerado para este orçamento.", Toast.LENGTH_LONG).show()
-                                            } else {
-                                                Toast.makeText(context, "Pedido $result gerado com sucesso!", Toast.LENGTH_LONG).show()
-                                                lastProcessedBudgetId = budget.id
-                                                loadBudgets()
+                    Column {
+                        if (isLoading) {
+                            LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+                        }
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp)
+                        ) {
+                            items(filteredBudgets) { budget ->
+                                BudgetItem(
+                                    budget, 
+                                    clientName = budget.clientName ?: clientMap[budget.clientId] ?: "N/A",
+                                    config = config,
+                                    onClick = { onBudgetClick(budget.id ?: 0) },
+                                    onCloseOrder = {
+                                        scope.launch {
+                                            try {
+                                                val result = supabaseService.createOrderFromBudget(mapOf("budget_id" to (budget.id ?: 0)))
+                                                if (result == -1) {
+                                                    Toast.makeText(context, "Já existe um pedido gerado para este orçamento.", Toast.LENGTH_LONG).show()
+                                                } else {
+                                                    Toast.makeText(context, "Pedido $result gerado com sucesso!", Toast.LENGTH_LONG).show()
+                                                    lastProcessedBudgetId = budget.id
+                                                    loadBudgets()
+                                                }
+                                            } catch (e: Exception) {
+                                                Toast.makeText(context, "Erro ao fechar pedido: ${e.message}", Toast.LENGTH_LONG).show()
                                             }
-                                        } catch (e: Exception) {
-                                            Toast.makeText(context, "Erro ao fechar pedido: ${e.message}", Toast.LENGTH_LONG).show()
                                         }
                                     }
-                                }
-                            )
+                                )
+                            }
                         }
                     }
                 }
