@@ -1,6 +1,10 @@
 package com.r_erp
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
+import android.util.Log
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -22,20 +26,8 @@ import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.ShoppingCart
 import androidx.compose.material.icons.filled.LocalMall
-import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DrawerValue
-import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.ModalDrawerSheet
-import androidx.compose.material3.ModalNavigationDrawer
-import androidx.compose.material3.NavigationDrawerItem
-import androidx.compose.material3.NavigationDrawerItemDefaults
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.material3.TopAppBar
-import androidx.compose.material3.rememberDrawerState
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -48,6 +40,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.r_erp.api.LocalToken
 import com.r_erp.api.LocalSessionManager
@@ -56,13 +49,16 @@ import com.r_erp.ui.theme.RerpTheme
 import com.r_erp.ui.screens.*
 import com.r_erp.utils.SessionManager
 import kotlinx.coroutines.launch
+import java.io.InputStreamReader
 
 class MainActivity : ComponentActivity() {
     private lateinit var sessionManager: SessionManager
+    private var externalNfeData = mutableStateOf<Map<String, Any>?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         sessionManager = SessionManager(this)
+        handleIntent(intent)
         enableEdgeToEdge()
         setContent {
             RerpTheme {
@@ -79,11 +75,48 @@ class MainActivity : ComponentActivity() {
                         LocalToken provides token!!,
                         LocalSessionManager provides sessionManager
                     ) {
-                        MainScreen(sessionManager)
+                        MainScreen(sessionManager, externalNfeData)
                     }
                 } else {
                     Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                         CircularProgressIndicator()
+                    }
+                }
+            }
+        }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        handleIntent(intent)
+    }
+
+    private fun handleIntent(intent: Intent?) {
+        if (intent?.action == Intent.ACTION_VIEW) {
+            val uri: Uri? = intent.data
+            if (uri != null) {
+                val scheme = uri.scheme
+                val path = uri.path?.lowercase() ?: ""
+                
+                // Simple extension check if possible, or just try to parse if it looks like XML
+                if (path.endsWith(".xml") || intent.type?.contains("xml") == true || scheme == "content") {
+                    try {
+                        contentResolver.openInputStream(uri)?.use { inputStream ->
+                            val xml = InputStreamReader(inputStream).readText()
+                            // Quick check for <nfeProc>
+                            if (xml.contains("<nfeProc", ignoreCase = true)) {
+                                val parsedData = parseNfeXml(xml)
+                                if (parsedData != null) {
+                                    if (parsedData.containsKey("error")) {
+                                        Toast.makeText(this, parsedData["error"] as String, Toast.LENGTH_LONG).show()
+                                    } else {
+                                        externalNfeData.value = parsedData
+                                    }
+                                }
+                            }
+                        }
+                    } catch (e: Exception) {
+                        Log.e("MainActivity", "Error reading external XML", e)
                     }
                 }
             }
@@ -98,9 +131,40 @@ data class NavigationItem(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MainScreen(sessionManager: SessionManager) {
+fun MainScreen(sessionManager: SessionManager, externalNfeData: MutableState<Map<String, Any>?> = mutableStateOf(null)) {
+    val context = LocalContext.current
     val drawerState = rememberDrawerState(initialValue = DrawerValue.Closed)
     val scope = rememberCoroutineScope()
+    val token = LocalToken.current
+    val supabaseService = remember(token) { SupabaseService.create(token, sessionManager) }
+
+    // External NFE processing overlay
+    if (externalNfeData.value != null) {
+        NfeProcessorView(
+            data = externalNfeData.value!!,
+            onFinished = { data ->
+                scope.launch {
+                    try {
+                        val response = supabaseService.buildPurchase(mapOf("p_payload" to data))
+                        if (response.isSuccessful) {
+                            Toast.makeText(context, "Compra registrada com sucesso!", Toast.LENGTH_SHORT).show()
+                            externalNfeData.value = null
+                            // If we are already on Purchases screen, we might need a way to refresh it.
+                            // For simplicity, we just clear the state.
+                        } else {
+                            Toast.makeText(context, "Erro: ${response.message()}", Toast.LENGTH_LONG).show()
+                            externalNfeData.value = null
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Erro: ${e.message}", Toast.LENGTH_LONG).show()
+                        externalNfeData.value = null
+                    }
+                }
+            },
+            onCancel = { externalNfeData.value = null }
+        )
+        return
+    }
     val items = remember {
         listOf(
             NavigationItem("Agenda", Icons.Default.Event),
