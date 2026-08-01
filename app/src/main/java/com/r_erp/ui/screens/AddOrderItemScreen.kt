@@ -70,6 +70,7 @@ fun AddOrderItemScreen(
     // Selection state
     var selectedService by remember { mutableStateOf<SupabaseServiceItem?>(null) }
     var selectedProduct by remember { mutableStateOf<SupabaseProduct?>(null) }
+    var searchText by remember { mutableStateOf("") }
     var itemExpanded by remember { mutableStateOf(false) }
     
     // Input fields
@@ -79,8 +80,8 @@ fun AddOrderItemScreen(
 
     LaunchedEffect(Unit) {
         try {
-            services = supabaseService.getServices()
-            products = supabaseService.getProducts()
+            services = supabaseService.getServices().sortedBy { it.description?.lowercase() }
+            products = supabaseService.getProducts().sortedBy { it.description?.lowercase() }
             isLoading = false
         } catch (e: Exception) {
             Toast.makeText(context, "Erro ao carregar dados: ${e.message}", Toast.LENGTH_LONG).show()
@@ -111,6 +112,7 @@ fun AddOrderItemScreen(
                             isService = it 
                             selectedService = null
                             selectedProduct = null
+                            searchText = ""
                             price = "0.00"
                         }
                     )
@@ -118,40 +120,57 @@ fun AddOrderItemScreen(
                 }
 
                 // Service or Product Dropdown
+                val filteredServices = remember(services, searchText) {
+                    services.filter { it.description?.contains(searchText, ignoreCase = true) == true }
+                }
+                val filteredProducts = remember(products, searchText) {
+                    products.filter { it.description?.contains(searchText, ignoreCase = true) == true }
+                }
+
                 ExposedDropdownMenuBox(
                     expanded = itemExpanded,
-                    onExpandedChange = { itemExpanded = !itemExpanded },
+                    onExpandedChange = { itemExpanded = it },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     OutlinedTextField(
-                        value = if (isService) selectedService?.description ?: "" else selectedProduct?.description ?: "",
-                        onValueChange = {},
-                        readOnly = true,
+                        value = searchText,
+                        onValueChange = { 
+                            searchText = it
+                            itemExpanded = true
+                            if (isService) {
+                                if (selectedService?.description != it) selectedService = null
+                            } else {
+                                if (selectedProduct?.description != it) selectedProduct = null
+                            }
+                        },
                         label = { Text(if (isService) "Serviço" else "Produto") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = itemExpanded) },
-                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true).fillMaxWidth()
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true).fillMaxWidth(),
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
                     )
                     ExposedDropdownMenu(
-                        expanded = itemExpanded,
+                        expanded = itemExpanded && (if (isService) filteredServices.isNotEmpty() else filteredProducts.isNotEmpty()),
                         onDismissRequest = { itemExpanded = false }
                     ) {
                         if (isService) {
-                            services.forEach { service ->
+                            filteredServices.forEach { service ->
                                 DropdownMenuItem(
                                     text = { Text(service.description ?: "") },
                                     onClick = {
                                         selectedService = service
+                                        searchText = service.description ?: ""
                                         price = String.format(Locale.US, "%.2f", service.price ?: 0.0)
                                         itemExpanded = false
                                     }
                                 )
                             }
                         } else {
-                            products.forEach { product ->
+                            filteredProducts.forEach { product ->
                                 DropdownMenuItem(
                                     text = { Text(product.description ?: "") },
                                     onClick = {
                                         selectedProduct = product
+                                        searchText = product.description ?: ""
                                         price = String.format(Locale.US, "%.2f", product.price ?: 0.0)
                                         itemExpanded = false
                                     }
