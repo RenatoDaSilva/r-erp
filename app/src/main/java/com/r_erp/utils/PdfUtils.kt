@@ -29,6 +29,22 @@ object PdfUtils {
 
     private val localeBR = Locale.forLanguageTag("pt-BR")
 
+    private fun drawReportTableHeader(canvas: Canvas, boldPaint: Paint, paint: Paint, margin: Float, pageWidth: Float, y: Float, isReceivable: Boolean) {
+        boldPaint.textSize = 10f
+        boldPaint.textAlign = Paint.Align.LEFT
+        canvas.drawText("ID", margin, y, boldPaint)
+        canvas.drawText(if (isReceivable) "Cliente" else "Fornecedor", margin + 40f, y, boldPaint)
+        canvas.drawText("Origem", margin + 170f, y, boldPaint)
+        canvas.drawText("Venc.", margin + 300f, y, boldPaint)
+        
+        boldPaint.textAlign = Paint.Align.RIGHT
+        canvas.drawText("Valor", margin + 420f, y, boldPaint)
+        canvas.drawText("Pago", pageWidth - margin, y, boldPaint)
+        boldPaint.textAlign = Paint.Align.LEFT
+        
+        canvas.drawLine(margin, y + 10f, pageWidth - margin, y + 10f, paint)
+    }
+
     fun generateAndShareReceivablesReport(
         context: Context,
         items: List<SupabaseReceivable>,
@@ -36,9 +52,10 @@ object PdfUtils {
         totals: SupabaseReceivableTotal? = null
     ) {
         val pdfDocument = PdfDocument()
-        val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 Size
-        val page = pdfDocument.startPage(pageInfo)
-        val canvas: Canvas = page.canvas
+        var pageCount = 1
+        var pageInfo = PdfDocument.PageInfo.Builder(595, 842, pageCount).create() // A4 Size
+        var page = pdfDocument.startPage(pageInfo)
+        var canvas: Canvas = page.canvas
         val paint = Paint()
         val titlePaint = Paint()
         val boldPaint = Paint()
@@ -46,6 +63,8 @@ object PdfUtils {
         var y = 50f
         val margin = 50f
         val pageWidth = pageInfo.pageWidth.toFloat()
+        val pageHeight = pageInfo.pageHeight.toFloat()
+        val bottomMargin = 50f
 
         // Header
         titlePaint.textSize = 20f
@@ -66,27 +85,24 @@ object PdfUtils {
         paint.textAlign = Paint.Align.LEFT
 
         // Table Header
-        boldPaint.textSize = 10f
-        canvas.drawText("ID", margin, y, boldPaint)
-        canvas.drawText("Cliente", margin + 40f, y, boldPaint)
-        canvas.drawText("Origem", margin + 170f, y, boldPaint)
-        canvas.drawText("Venc.", margin + 300f, y, boldPaint)
-        
-        boldPaint.textAlign = Paint.Align.RIGHT
-        canvas.drawText("Valor", margin + 420f, y, boldPaint)
-        canvas.drawText("Pago", pageWidth - margin, y, boldPaint)
-        boldPaint.textAlign = Paint.Align.LEFT
-        
-        y += 10f
-        canvas.drawLine(margin, y, pageWidth - margin, y, paint)
+        drawReportTableHeader(canvas, boldPaint, paint, margin, pageWidth, y, true)
         y += 20f
 
         // Content
         paint.textSize = 9f
         items.forEach { item ->
-            if (y > 800f) {
-                // Not handling multiple pages for simplicity
+            if (y > pageHeight - bottomMargin) {
+                pdfDocument.finishPage(page)
+                pageCount++
+                pageInfo = PdfDocument.PageInfo.Builder(595, 842, pageCount).create()
+                page = pdfDocument.startPage(pageInfo)
+                canvas = page.canvas
+                y = 50f
+                drawReportTableHeader(canvas, boldPaint, paint, margin, pageWidth, y, true)
+                y += 20f
+                paint.textSize = 9f
             }
+
             canvas.drawText(item.id?.toString() ?: "", margin, y, paint)
 
             val client = clientMap[item.clientId] ?: item.clientFullName ?: "N/A"
@@ -127,9 +143,10 @@ object PdfUtils {
         totals: SupabasePayableTotal? = null
     ) {
         val pdfDocument = PdfDocument()
-        val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 Size
-        val page = pdfDocument.startPage(pageInfo)
-        val canvas: Canvas = page.canvas
+        var pageCount = 1
+        var pageInfo = PdfDocument.PageInfo.Builder(595, 842, pageCount).create() // A4 Size
+        var page = pdfDocument.startPage(pageInfo)
+        var canvas: Canvas = page.canvas
         val paint = Paint()
         val titlePaint = Paint()
         val boldPaint = Paint()
@@ -137,6 +154,8 @@ object PdfUtils {
         var y = 50f
         val margin = 50f
         val pageWidth = pageInfo.pageWidth.toFloat()
+        val pageHeight = pageInfo.pageHeight.toFloat()
+        val bottomMargin = 50f
 
         // Header
         titlePaint.textSize = 20f
@@ -157,26 +176,22 @@ object PdfUtils {
         paint.textAlign = Paint.Align.LEFT
 
         // Table Header
-        boldPaint.textSize = 10f
-        canvas.drawText("ID", margin, y, boldPaint)
-        canvas.drawText("Fornecedor", margin + 40f, y, boldPaint)
-        canvas.drawText("Origem", margin + 170f, y, boldPaint)
-        canvas.drawText("Venc.", margin + 300f, y, boldPaint)
-        
-        boldPaint.textAlign = Paint.Align.RIGHT
-        canvas.drawText("Valor", margin + 420f, y, boldPaint)
-        canvas.drawText("Pago", pageWidth - margin, y, boldPaint)
-        boldPaint.textAlign = Paint.Align.LEFT
-        
-        y += 10f
-        canvas.drawLine(margin, y, pageWidth - margin, y, paint)
+        drawReportTableHeader(canvas, boldPaint, paint, margin, pageWidth, y, false)
         y += 20f
 
         // Content
         paint.textSize = 9f
         items.forEach { item ->
-            if (y > 800f) {
-                // Not handling multiple pages for simplicity
+            if (y > pageHeight - bottomMargin) {
+                pdfDocument.finishPage(page)
+                pageCount++
+                pageInfo = PdfDocument.PageInfo.Builder(595, 842, pageCount).create()
+                page = pdfDocument.startPage(pageInfo)
+                canvas = page.canvas
+                y = 50f
+                drawReportTableHeader(canvas, boldPaint, paint, margin, pageWidth, y, false)
+                y += 20f
+                paint.textSize = 9f
             }
             canvas.drawText(item.id?.toString() ?: "", margin, y, paint)
 
@@ -211,6 +226,21 @@ object PdfUtils {
         shareFile(context, file, "Relatório de Pagamentos")
     }
 
+    private fun drawBudgetOrderTableHeader(canvas: Canvas, boldPaint: Paint, paint: Paint, margin: Float, pageWidth: Float, y: Float) {
+        boldPaint.textSize = 10f
+        boldPaint.textAlign = Paint.Align.LEFT
+        canvas.drawText("Qtd.", margin, y, boldPaint)
+        canvas.drawText("Descrição", margin + 50f, y, boldPaint)
+        
+        boldPaint.textAlign = Paint.Align.RIGHT
+        canvas.drawText("Preço unit.", margin + 370f, y, boldPaint)
+        canvas.drawText("Desc.", margin + 450f, y, boldPaint)
+        canvas.drawText("Total", pageWidth - margin, y, boldPaint)
+        boldPaint.textAlign = Paint.Align.LEFT
+        
+        canvas.drawLine(margin, y + 10f, pageWidth - margin, y + 10f, paint)
+    }
+
     fun generateAndShareBudgetPdf(
         context: Context, 
         budget: SupabaseBudget, 
@@ -219,9 +249,10 @@ object PdfUtils {
         config: SupabaseConfig? = null
     ) {
         val pdfDocument = PdfDocument()
-        val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 Size
-        val page = pdfDocument.startPage(pageInfo)
-        val canvas: Canvas = page.canvas
+        var pageCount = 1
+        var pageInfo = PdfDocument.PageInfo.Builder(595, 842, pageCount).create() // A4 Size
+        var page = pdfDocument.startPage(pageInfo)
+        var canvas: Canvas = page.canvas
         val paint = Paint()
         val titlePaint = Paint()
         val boldPaint = Paint()
@@ -229,6 +260,8 @@ object PdfUtils {
         var y = 50f
         val margin = 50f
         val pageWidth = pageInfo.pageWidth.toFloat()
+        val pageHeight = pageInfo.pageHeight.toFloat()
+        val bottomMargin = 60f
 
         // New Header with Config Info
         if (config != null) {
@@ -294,31 +327,31 @@ object PdfUtils {
         y += 40f // Give a row space
 
         // Items Table Header
-        boldPaint.textSize = 10f
-        canvas.drawText("Qtd.", margin, y, boldPaint)
-        canvas.drawText("Descrição", margin + 50f, y, boldPaint)
-        
-        boldPaint.textAlign = Paint.Align.RIGHT
-        canvas.drawText("Preço unit.", margin + 370f, y, boldPaint)
-        canvas.drawText("Desc.", margin + 450f, y, boldPaint)
-        canvas.drawText("Total", pageWidth - margin, y, boldPaint)
-        boldPaint.textAlign = Paint.Align.LEFT // Reset
-        
-        y += 10f
-        canvas.drawLine(margin, y, pageWidth - margin, y, paint)
-        y += 20f
+        drawBudgetOrderTableHeader(canvas, boldPaint, paint, margin, pageWidth, y)
+        y += 30f
 
         // Table Content
         paint.textSize = 10f
         budget.items?.forEach { item ->
-            if (y > 750f) { 
-                // Simple page break check (not fully implemented for multi-page)
-            }
-            
-            val initialY = y
             val desc = item.description ?: ""
             val descWidth = 310f // Space between Desc column and Price column
             val lines = wrapText(desc, paint, descWidth)
+            val itemHeight = maxOf(1, lines.size) * 15f + 10f
+
+            // Page break check
+            if (y + itemHeight > pageHeight - bottomMargin) {
+                pdfDocument.finishPage(page)
+                pageCount++
+                pageInfo = PdfDocument.PageInfo.Builder(595, 842, pageCount).create()
+                page = pdfDocument.startPage(pageInfo)
+                canvas = page.canvas
+                y = 50f
+                drawBudgetOrderTableHeader(canvas, boldPaint, paint, margin, pageWidth, y)
+                y += 30f
+                paint.textSize = 10f // restore
+            }
+            
+            val initialY = y
             
             // Draw item data on the first line
             canvas.drawText(String.format(localeBR, "%.2f", item.quantity ?: 0.0), margin, y, paint)
@@ -335,15 +368,23 @@ object PdfUtils {
                 y += 15f
             }
             
-            // Add a small gap between items if description was multi-line, 
-            // otherwise y already advanced by at least one line (15f).
-            // Let's ensure a minimum height per item row.
-            val rowHeight = y - initialY
-            if (rowHeight < 20f) {
+            // Ensure minimum height per item row if it was single line
+            if (y - initialY < 20f) {
                 y = initialY + 20f
             } else {
-                y += 5f // Small extra gap after multi-line description
+                y += 5f 
             }
+        }
+
+        // Check if footer fits, otherwise start new page
+        val footerHeight = 150f
+        if (y + footerHeight > pageHeight - bottomMargin) {
+            pdfDocument.finishPage(page)
+            pageCount++
+            pageInfo = PdfDocument.PageInfo.Builder(595, 842, pageCount).create()
+            page = pdfDocument.startPage(pageInfo)
+            canvas = page.canvas
+            y = 50f
         }
 
         y += 20f
@@ -364,12 +405,31 @@ object PdfUtils {
 
         if (!budget.message.isNullOrBlank()) {
             paint.textAlign = Paint.Align.LEFT
-            boldPaint.textSize = 14f
-            canvas.drawText("Mensagem: ${budget.message}", margin, y, paint)
-            y += 30f
+            val lines = wrapText("Mensagem: ${budget.message}", paint, pageWidth - 2 * margin)
+            lines.forEach { line ->
+                if (y > pageHeight - bottomMargin) {
+                    pdfDocument.finishPage(page)
+                    pageCount++
+                    pageInfo = PdfDocument.PageInfo.Builder(595, 842, pageCount).create()
+                    page = pdfDocument.startPage(pageInfo)
+                    canvas = page.canvas
+                    y = 50f
+                }
+                canvas.drawText(line, margin, y, paint)
+                y += 15f
+            }
+            y += 15f
         }
 
-        // Validity: "Orçamento válido até " + valid_until (DD/MM/YYYY)
+        // Validity
+        if (y > pageHeight - bottomMargin) {
+            pdfDocument.finishPage(page)
+            pageCount++
+            pageInfo = PdfDocument.PageInfo.Builder(595, 842, pageCount).create()
+            page = pdfDocument.startPage(pageInfo)
+            canvas = page.canvas
+            y = 50f
+        }
         paint.textAlign = Paint.Align.LEFT
         val validUntilFormatted = formatDate(budget.validUntil)
         canvas.drawText("Orçamento válido até $validUntilFormatted", margin, y, paint)
@@ -475,9 +535,10 @@ object PdfUtils {
         config: SupabaseConfig? = null
     ) {
         val pdfDocument = PdfDocument()
-        val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create() // A4 Size
-        val page = pdfDocument.startPage(pageInfo)
-        val canvas: Canvas = page.canvas
+        var pageCount = 1
+        var pageInfo = PdfDocument.PageInfo.Builder(595, 842, pageCount).create() // A4 Size
+        var page = pdfDocument.startPage(pageInfo)
+        var canvas: Canvas = page.canvas
         val paint = Paint()
         val titlePaint = Paint()
         val boldPaint = Paint()
@@ -485,6 +546,8 @@ object PdfUtils {
         var y = 50f
         val margin = 50f
         val pageWidth = pageInfo.pageWidth.toFloat()
+        val pageHeight = pageInfo.pageHeight.toFloat()
+        val bottomMargin = 60f
 
         // New Header with Config Info
         if (config != null) {
@@ -545,32 +608,30 @@ object PdfUtils {
         y += 40f // Give a row space
 
         // Items Table Header
-        boldPaint.textSize = 10f
-        canvas.drawText("Qtd.", margin, y, boldPaint)
-        canvas.drawText("Descrição", margin + 50f, y, boldPaint)
-        
-        boldPaint.textAlign = Paint.Align.RIGHT
-        canvas.drawText("Preço unit.", margin + 370f, y, boldPaint)
-        canvas.drawText("Desc.", margin + 450f, y, boldPaint)
-        canvas.drawText("Total", pageWidth - margin, y, boldPaint)
-        boldPaint.textAlign = Paint.Align.LEFT // Reset
-        
-        y += 10f
-        canvas.drawLine(margin, y, pageWidth - margin, y, paint)
-        y += 20f
+        drawBudgetOrderTableHeader(canvas, boldPaint, paint, margin, pageWidth, y)
+        y += 30f
 
         // Table Content
         paint.textSize = 10f
         order.items?.forEach { item ->
-            if (y > 750f) {
-                // In a real app we would start a new page here
-            }
-
-            val initialY = y
             val desc = item.description ?: ""
             val descWidth = 310f // Space between Desc column and Price column
             val lines = wrapText(desc, paint, descWidth)
+            val itemHeight = maxOf(1, lines.size) * 15f + 10f
 
+            if (y + itemHeight > pageHeight - bottomMargin) {
+                pdfDocument.finishPage(page)
+                pageCount++
+                pageInfo = PdfDocument.PageInfo.Builder(595, 842, pageCount).create()
+                page = pdfDocument.startPage(pageInfo)
+                canvas = page.canvas
+                y = 50f
+                drawBudgetOrderTableHeader(canvas, boldPaint, paint, margin, pageWidth, y)
+                y += 30f
+                paint.textSize = 10f // restore
+            }
+
+            val initialY = y
             // Draw item data on the first line
             canvas.drawText(String.format(localeBR, "%.2f", item.quantity ?: 0.0), margin, y, paint)
 
@@ -586,12 +647,21 @@ object PdfUtils {
                 y += 15f
             }
 
-            val rowHeight = y - initialY
-            if (rowHeight < 20f) {
+            if (y - initialY < 20f) {
                 y = initialY + 20f
             } else {
                 y += 5f
             }
+        }
+
+        val footerHeight = 150f
+        if (y + footerHeight > pageHeight - bottomMargin) {
+            pdfDocument.finishPage(page)
+            pageCount++
+            pageInfo = PdfDocument.PageInfo.Builder(595, 842, pageCount).create()
+            page = pdfDocument.startPage(pageInfo)
+            canvas = page.canvas
+            y = 50f
         }
 
         y += 20f
@@ -622,7 +692,14 @@ object PdfUtils {
             paint.textAlign = Paint.Align.LEFT
             val lines = wrapText("Mensagem: $footerMessage", paint, pageWidth - 2 * margin)
             lines.forEach { line ->
-                if (y > 820f) return@forEach
+                if (y > pageHeight - bottomMargin) {
+                    pdfDocument.finishPage(page)
+                    pageCount++
+                    pageInfo = PdfDocument.PageInfo.Builder(595, 842, pageCount).create()
+                    page = pdfDocument.startPage(pageInfo)
+                    canvas = page.canvas
+                    y = 50f
+                }
                 canvas.drawText(line, margin, y, paint)
                 y += 15f
             }

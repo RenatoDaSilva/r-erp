@@ -60,6 +60,7 @@ fun AddPurchaseItemScreen(
     var isLoading by remember { mutableStateOf(true) }
     var products by remember { mutableStateOf<List<SupabaseProduct>>(emptyList()) }
     var selectedProduct by remember { mutableStateOf<SupabaseProduct?>(null) }
+    var searchText by remember { mutableStateOf("") }
     var itemExpanded by remember { mutableStateOf(false) }
     
     var quantity by remember { mutableStateOf("1.00") }
@@ -68,7 +69,7 @@ fun AddPurchaseItemScreen(
 
     LaunchedEffect(Unit) {
         try {
-            products = supabaseService.getProducts()
+            products = supabaseService.getProducts().sortedBy { it.description?.lowercase() }
             isLoading = false
         } catch (e: Exception) {
             Toast.makeText(context, "Erro ao carregar dados: ${e.message}", Toast.LENGTH_LONG).show()
@@ -92,28 +93,39 @@ fun AddPurchaseItemScreen(
             ) {
                 Text(text = "Adicionar Item de Compra", style = MaterialTheme.typography.headlineSmall)
 
+                val filteredProducts = remember(products, searchText) {
+                    products.filter { it.description?.contains(searchText, ignoreCase = true) == true }
+                }
+
                 ExposedDropdownMenuBox(
                     expanded = itemExpanded,
-                    onExpandedChange = { itemExpanded = !itemExpanded },
+                    onExpandedChange = { itemExpanded = it },
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     OutlinedTextField(
-                        value = selectedProduct?.description ?: "",
-                        onValueChange = {},
-                        readOnly = true,
+                        value = searchText,
+                        onValueChange = { 
+                            searchText = it
+                            itemExpanded = true
+                            if (selectedProduct?.description != it) {
+                                selectedProduct = null
+                            }
+                        },
                         label = { Text("Produto") },
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = itemExpanded) },
-                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true).fillMaxWidth()
+                        modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true).fillMaxWidth(),
+                        colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
                     )
                     ExposedDropdownMenu(
-                        expanded = itemExpanded,
+                        expanded = itemExpanded && filteredProducts.isNotEmpty(),
                         onDismissRequest = { itemExpanded = false }
                     ) {
-                        products.forEach { product ->
+                        filteredProducts.forEach { product ->
                             DropdownMenuItem(
                                 text = { Text(product.description ?: "") },
                                 onClick = {
                                     selectedProduct = product
+                                    searchText = product.description ?: ""
                                     price = String.format(Locale.US, "%.2f", product.cost ?: 0.0)
                                     itemExpanded = false
                                 }
