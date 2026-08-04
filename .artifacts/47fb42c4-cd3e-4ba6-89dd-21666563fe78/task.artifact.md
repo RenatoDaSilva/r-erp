@@ -1,11 +1,8 @@
-# Tasks - Add Product to Order
+# Tasks - Add Service to Budget
 
-- [x] Update `SupabaseService.kt`
-    - [x] Add `SupabaseElectibleOrder` data class
-    - [x] Add `getElectibleOrders` and `createOrderItem` to `SupabaseService` interface
-- [x] Update `ProductsScreen.kt`
-    - [x] Add "Adicionar ao pedido ..." to `ProductItem` long-press menu
-    - [x] Add state for "Add to Order" dialog
-    - [x] Implement `AddToOrderDialog` composable
+- [x] Update `ServicesScreen.kt`
+    - [x] Add "Adicionar ao orçamento ..." to `ServiceItem` long-press menu
+    - [x] Add state for "Add to Budget" dialog in `ServicesScreen`
+    - [x] Implement `AddServiceToBudgetDialog` composable
     - [x] Handle "Adicionar" action (API call, success/error messages)
 - [x] Verify the implementation
