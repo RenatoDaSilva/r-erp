@@ -281,6 +281,12 @@ data class SupabaseElectibleBudget(
     @SerializedName("created_at") val createdAt: String? = null
 )
 
+data class SupabaseElectibleOrder(
+    val id: Int? = null,
+    @SerializedName("client_name") val clientName: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null
+)
+
 data class SupabasePeriod(
     @SerializedName("p_month") val month: Int?,
     @SerializedName("p_year") val year: Int?
@@ -352,6 +358,9 @@ interface SupabaseService {
 
     @POST("order_items")
     suspend fun createOrderItems(@Body items: List<SupabaseOrderItemRequest>): Response<Unit>
+
+    @POST("order_items")
+    suspend fun createOrderItem(@Body item: SupabaseOrderItemRequest): Response<Unit>
 
     @GET("order_items")
     suspend fun getOrderItems(@Query("order_id") orderIdFilter: String): List<SupabaseOrderItem>
@@ -575,6 +584,9 @@ interface SupabaseService {
 
     @GET("electible_budgets")
     suspend fun getElectibleBudgets(): List<SupabaseElectibleBudget>
+
+    @GET("electible_orders")
+    suspend fun getElectibleOrders(): List<SupabaseElectibleOrder>
 
     companion object {
         private const val BASE_URL = "https://euzmbicrbjpgcyrojvdm.supabase.co/rest/v1/"
