@@ -1,39 +1,63 @@
-# Implementation Plan - Filterable Product Selection
+# Implementation Plan - Add Product to Budget
 
-This plan aims to improve the product selection UX in `AddPurchaseItemScreen`, `AddOrderItemScreen`, and `AddBudgetItemScreen` by making the product dropdown filterable and sorted alphabetically.
+This plan adds a feature to the Products screen allowing users to long-press a product and add it to an existing "electible" budget.
 
 ## Proposed Changes
 
-### General Improvements
-- Sort product and service lists alphabetically by their description when fetched from the API.
-- Implement filtering logic in the product/service selection dropdowns.
+### [Component Name] API Layer
 
-### [Component Name] UI Screens
+#### [MODIFY] [SupabaseService.kt](file:///C:/Users/borba/AndroidStudioProjects/r-erp/app/src/main/java/com/r_erp/api/SupabaseService.kt)
+- Add `SupabaseElectibleBudget` data class:
+  ```kotlin
+  data class SupabaseElectibleBudget(
+      val id: Int? = null,
+      @SerializedName("client_name") val clientName: String? = null,
+      @SerializedName("created_at") val createdAt: String? = null
+  )
+  ```
+- Add `getElectibleBudgets()` method to `SupabaseService` interface:
+  ```kotlin
+  @GET("electible_budgets")
+  suspend fun getElectibleBudgets(): List<SupabaseElectibleBudget>
+  ```
+- Add a single-item `createBudgetItem` method to `SupabaseService` interface:
+  ```kotlin
+  @POST("budget_items")
+  suspend fun createBudgetItem(@Body item: SupabaseBudgetItemRequest): Response<Unit>
+  ```
 
-#### [MODIFY] [AddPurchaseItemScreen.kt](file:///C:/Users/borba/AndroidStudioProjects/r-erp/app/src/main/java/com/r_erp/ui/screens/AddPurchaseItemScreen.kt)
-- Add `searchText` state to track user input in the product field.
-- Sort the `products` list alphabetically.
-- Change `OutlinedTextField` to be editable and update `searchText`.
-- Filter the `products` shown in `ExposedDropdownMenu` based on `searchText`.
-- Update `selectedProduct` when a product is selected from the menu.
+### [Component Name] UI Layer
 
-#### [MODIFY] [AddOrderItemScreen.kt](file:///C:/Users/borba/AndroidStudioProjects/r-erp/app/src/main/java/com/r_erp/ui/screens/AddOrderItemScreen.kt)
-- Add `searchText` state.
-- Sort `products` and `services` lists alphabetically.
-- Update `OutlinedTextField` to be editable and filter both products and services (depending on the `isService` toggle).
-- Ensure `searchText` is cleared or updated correctly when toggling `isService`.
-
-#### [MODIFY] [AddBudgetItemScreen.kt](file:///C:/Users/borba/AndroidStudioProjects/r-erp/app/src/main/java/com/r_erp/ui/screens/AddBudgetItemScreen.kt)
-- Add `searchText` state.
-- Sort `products` and `services` lists alphabetically.
-- Update `OutlinedTextField` to be editable and filter the displayed items.
+#### [MODIFY] [ProductsScreen.kt](file:///C:/Users/borba/AndroidStudioProjects/r-erp/app/src/main/java/com/r_erp/ui/screens/ProductsScreen.kt)
+- Update `ProductItem` to include a new "Adicionar ao orçamento ..." item in the long-press `DropdownMenu`.
+- Add state variables to `ProductsScreen` to manage the "Add to Budget" dialog:
+    - `showAddToBudgetDialog: Boolean`
+    - `productToAddToBudget: SupabaseProduct?`
+- Implement `AddToBudgetDialog` composable:
+    - Fetches electible budgets using `supabaseService.getElectibleBudgets()` on launch.
+    - Displays a filterable `ExposedDropdownMenuBox` (reusing the logic from previous improvements) to select a budget.
+    - Includes an `OutlinedTextField` for quantity (numeric keyboard).
+    - Includes "Adicionar" and "Cancelar" buttons.
+    - On "Adicionar":
+        - POSTs to `budget_items` with `budget_id`, `product_id`, `price` (from product), and `quantity`.
+        - Shows a success message (Toast or Snackbar) and closes the dialog on success.
+        - Shows an error message and keeps the dialog open on failure.
 
 ## Verification Plan
 
+### Automated Tests
+- None requested, but manual verification will be thorough.
+
 ### Manual Verification
-- Deploy the app to a device or emulator.
-- Navigate to "Add Purchase Item", "Add Order Item", and "Add Budget Item" screens.
-- Verify that the product/service lists are sorted alphabetically.
-- Verify that typing in the product/service field filters the list in real-time.
-- Verify that selecting an item from the filtered list correctly updates the selection and related fields (like price).
-- Verify that the dropdown behavior remains functional (opening/closing/dismissing).
+1.  Open the app and navigate to the Products screen.
+2.  Long-press a product.
+3.  Verify "Adicionar ao orçamento ..." appears in the menu.
+4.  Click "Adicionar ao orçamento ...".
+5.  Verify the dialog opens and displays a list of electible budgets in the combo box.
+6.  Enter a quantity.
+7.  Select a budget.
+8.  Click "Adicionar".
+9.  Verify the success message appears and the dialog closes.
+10. Check if the item was actually added to the budget (optional but recommended if budget details screen is accessible).
+11. Test the "Cancelar" button to ensure it closes the dialog without action.
+12. Test error handling (e.g., trying to add without selecting a budget or quantity).

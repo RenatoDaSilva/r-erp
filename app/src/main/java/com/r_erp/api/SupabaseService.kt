@@ -275,6 +275,12 @@ data class SupabaseConfig(
     @SerializedName("created_at") val createdAt: String? = null
 )
 
+data class SupabaseElectibleBudget(
+    val id: Int? = null,
+    @SerializedName("client_name") val clientName: String? = null,
+    @SerializedName("created_at") val createdAt: String? = null
+)
+
 data class SupabasePeriod(
     @SerializedName("p_month") val month: Int?,
     @SerializedName("p_year") val year: Int?
@@ -319,6 +325,9 @@ interface SupabaseService {
 
     @POST("budget_items")
     suspend fun createBudgetItems(@Body items: List<SupabaseBudgetItemRequest>): Response<Unit>
+
+    @POST("budget_items")
+    suspend fun createBudgetItem(@Body item: SupabaseBudgetItemRequest): Response<Unit>
 
     @GET("budget_items")
     suspend fun getBudgetItems(@Query("budget_id") budgetIdFilter: String): List<SupabaseBudgetItem>
@@ -563,6 +572,9 @@ interface SupabaseService {
 
     @POST("rpc/close_month")
     suspend fun closeMonth(@Body body: Map<String, String>): Response<String>
+
+    @GET("electible_budgets")
+    suspend fun getElectibleBudgets(): List<SupabaseElectibleBudget>
 
     companion object {
         private const val BASE_URL = "https://euzmbicrbjpgcyrojvdm.supabase.co/rest/v1/"

@@ -1,26 +1,29 @@
-# Walkthrough - Filterable Product Selection
+# Walkthrough - Add Product to Budget
 
-I have implemented the filterable product selection and alphabetical sorting in the following screens:
-- `AddPurchaseItemScreen`
-- `AddOrderItemScreen`
-- `AddBudgetItemScreen`
+I have implemented the "Adicionar ao orçamento ..." feature in the Products screen.
 
-## Key Changes
+## Changes Made
 
-### 1. Alphabetical Sorting
-The lists of products and services are now sorted alphabetically by their description when loaded from the Supabase service.
+### 1. API Integration
+- **[SupabaseService.kt](file:///C:/Users/borba/AndroidStudioProjects/r-erp/app/src/main/java/com/r_erp/api/SupabaseService.kt)**:
+    - Added `SupabaseElectibleBudget` data class to represent budgets eligible for adding products.
+    - Added `getElectibleBudgets()` to fetch the list from `https://euzmbicrbjpgcyrojvdm.supabase.co/rest/v1/electible_budgets`.
+    - Added `createBudgetItem()` to POST a single item to `https://euzmbicrbjpgcyrojvdm.supabase.co/rest/v1/budget_items`.
 
-### 2. Filterable Selector
-- The product/service dropdown is now an editable `OutlinedTextField`.
-- As the user types, the list is filtered in real-time to show only matching items.
-- The dropdown menu automatically opens when typing and closes when an item is selected or dismissed.
-
-### 3. State Management
-- A new `searchText` state was added to handle the input in the filter field.
-- In screens with a "Service" toggle, the search text and selection are cleared when switching modes to maintain consistency.
-- The "Add" button's enabled state still depends on a formal selection from the dropdown list.
+### 2. UI Enhancements
+- **[ProductsScreen.kt](file:///C:/Users/borba/AndroidStudioProjects/r-erp/app/src/main/java/com/r_erp/ui/screens/ProductsScreen.kt)**:
+    - Added "Adicionar ao orçamento ..." to the long-press menu of each product item.
+    - Implemented `AddToBudgetDialog`:
+        - A popup dialog that appears when "Adicionar ao orçamento ..." is selected.
+        - Includes a filterable combo box to search and select an existing budget.
+        - Includes a numeric input field for the quantity.
+        - "Adicionar" button triggers the API call with the correct payload (`budget_id`, `product_id`, `price`, `quantity`).
+        - Displays a success Toast message upon successful addition and closes the dialog.
+        - Displays an error message within the dialog if the operation fails, keeping the dialog open for correction.
+        - "Cancelar" button dismisses the dialog without any action.
 
 ## Verification
-- Verified that `products` and `services` are sorted using `.sortedBy { it.description?.lowercase() }`.
-- Verified that `ExposedDropdownMenu` uses a filtered list based on the input text.
-- Verified that the UI uses `ExposedDropdownMenuAnchorType.PrimaryEditable` for proper integration with the editable text field.
+- Verified the data models match the Supabase table structures.
+- Verified the long-press interaction triggers the dialog.
+- Verified the search/filter functionality in the budget selection combo box.
+- Verified the error handling and success feedback loop.
