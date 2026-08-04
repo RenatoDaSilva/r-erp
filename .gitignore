@@ -32,3 +32,5 @@ google-services.json
 
 # Android Profiling
 *.hprof
+.artifacts/47fb42c4-cd3e-4ba6-89dd-21666563fe78/implementation_plan.artifact.md
+.artifacts/47fb42c4-cd3e-4ba6-89dd-21666563fe78/task.artifact.md
