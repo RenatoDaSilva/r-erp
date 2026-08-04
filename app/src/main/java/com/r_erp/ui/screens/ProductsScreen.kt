@@ -98,6 +98,9 @@ fun ProductsScreen(onProductClick: (Int) -> Unit) {
     var showAddToBudgetDialog by remember { mutableStateOf(false) }
     var productToAddToBudget by remember { mutableStateOf<SupabaseProduct?>(null) }
 
+    var showAddToOrderDialog by remember { mutableStateOf(false) }
+    var productToAddToOrder by remember { mutableStateOf<SupabaseProduct?>(null) }
+
     val context = LocalContext.current
 
     if (showAddToBudgetDialog && productToAddToBudget != null) {
@@ -108,6 +111,18 @@ fun ProductsScreen(onProductClick: (Int) -> Unit) {
             onSuccess = { budgetId ->
                 Toast.makeText(context, "Produto adicionado ao orçamento $budgetId com sucesso", Toast.LENGTH_LONG).show()
                 showAddToBudgetDialog = false
+            }
+        )
+    }
+
+    if (showAddToOrderDialog && productToAddToOrder != null) {
+        AddToOrderDialog(
+            product = productToAddToOrder!!,
+            supabaseService = supabaseService,
+            onDismiss = { showAddToOrderDialog = false },
+            onSuccess = { orderId ->
+                Toast.makeText(context, "Produto adicionado ao pedido $orderId com sucesso", Toast.LENGTH_LONG).show()
+                showAddToOrderDialog = false
             }
         )
     }
@@ -256,6 +271,10 @@ fun ProductsScreen(onProductClick: (Int) -> Unit) {
                                     onAddToBudget = {
                                         productToAddToBudget = product
                                         showAddToBudgetDialog = true
+                                    },
+                                    onAddToOrder = {
+                                        productToAddToOrder = product
+                                        showAddToOrderDialog = true
                                     }
                                 )
                             }
@@ -273,7 +292,8 @@ fun ProductItem(
     product: SupabaseProduct,
     onClick: () -> Unit,
     onAdjustStock: (String) -> Unit,
-    onAddToBudget: () -> Unit
+    onAddToBudget: () -> Unit,
+    onAddToOrder: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -339,6 +359,14 @@ fun ProductItem(
                 onClick = {
                     showMenu = false
                     onAddToBudget()
+                }
+            )
+
+            DropdownMenuItem(
+                text = { Text("Adicionar ao pedido ...") },
+                onClick = {
+                    showMenu = false
+                    onAddToOrder()
                 }
             )
 
@@ -497,6 +525,147 @@ fun AddToBudgetDialog(
                     }
                 },
                 enabled = selectedBudget != null && !isSaving && !isLoading
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                } else {
+                    Text("Adicionar")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isSaving) {
+                Text("Cancelar")
+            }
+        }
+    )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddToOrderDialog(
+    product: SupabaseProduct,
+    supabaseService: SupabaseService,
+    onDismiss: () -> Unit,
+    onSuccess: (Int) -> Unit
+) {
+    var isLoading by remember { mutableStateOf(true) }
+    var orders by remember { mutableStateOf<List<com.r_erp.api.SupabaseElectibleOrder>>(emptyList()) }
+    var selectedOrder by remember { mutableStateOf<com.r_erp.api.SupabaseElectibleOrder?>(null) }
+    var quantity by remember { mutableStateOf("1.00") }
+    var searchText by remember { mutableStateOf("") }
+    var isExpanded by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isSaving by remember { mutableStateOf(false) }
+
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        try {
+            orders = supabaseService.getElectibleOrders().sortedBy { it.clientName?.lowercase() }
+            isLoading = false
+        } catch (e: Exception) {
+            errorMessage = e.message ?: "Erro ao carregar pedidos"
+            isLoading = false
+        }
+    }
+
+    val filteredOrders = remember(orders, searchText) {
+        orders.filter { 
+            (it.clientName ?: "").contains(searchText, ignoreCase = true) || 
+            (it.id?.toString() ?: "").contains(searchText)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Adicionar ao pedido") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(text = "Produto: ${product.description}", style = MaterialTheme.typography.bodyLarge)
+                
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                } else {
+                    ExposedDropdownMenuBox(
+                        expanded = isExpanded,
+                        onExpandedChange = { isExpanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = searchText,
+                            onValueChange = { 
+                                searchText = it
+                                isExpanded = true
+                                if (selectedOrder?.clientName != it) selectedOrder = null
+                            },
+                            label = { Text("Selecionar Pedido") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded) },
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true).fillMaxWidth(),
+                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                        )
+                        
+                        ExposedDropdownMenu(
+                            expanded = isExpanded && filteredOrders.isNotEmpty(),
+                            onDismissRequest = { isExpanded = false }
+                        ) {
+                            filteredOrders.forEach { order ->
+                                DropdownMenuItem(
+                                    text = { Text("#${order.id} - ${order.clientName}") },
+                                    onClick = {
+                                        selectedOrder = order
+                                        searchText = order.clientName ?: ""
+                                        isExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = quantity,
+                        onValueChange = { quantity = it },
+                        label = { Text("Quantidade") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    if (errorMessage != null) {
+                        Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val qty = quantity.toDoubleOrNull() ?: 0.0
+                    if (selectedOrder != null && qty > 0) {
+                        isSaving = true
+                        scope.launch {
+                            try {
+                                val request = com.r_erp.api.SupabaseOrderItemRequest(
+                                    orderId = selectedOrder!!.id,
+                                    productId = product.id,
+                                    serviceId = null,
+                                    quantity = qty,
+                                    price = product.price,
+                                    discount = 0.0
+                                )
+                                val response = supabaseService.createOrderItem(request)
+                                if (response.isSuccessful) {
+                                    onSuccess(selectedOrder!!.id!!)
+                                } else {
+                                    errorMessage = "Erro: ${response.code()} ${response.message()}"
+                                }
+                            } catch (e: Exception) {
+                                errorMessage = e.message ?: "Erro ao salvar"
+                            } finally {
+                                isSaving = false
+                            }
+                        }
+                    }
+                },
+                enabled = selectedOrder != null && !isSaving && !isLoading
             ) {
                 if (isSaving) {
                     CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
