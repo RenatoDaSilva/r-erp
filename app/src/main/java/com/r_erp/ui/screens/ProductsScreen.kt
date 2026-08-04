@@ -1,6 +1,8 @@
 package com.r_erp.ui.screens
 
+import android.widget.Toast
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -22,6 +25,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -90,6 +94,23 @@ fun ProductsScreen(onProductClick: (Int) -> Unit) {
     var adjustmentType by remember { mutableStateOf("") }
     var adjustmentProduct by remember { mutableStateOf<SupabaseProduct?>(null) }
     var adjustmentValue by remember { mutableStateOf("1") }
+
+    var showAddToBudgetDialog by remember { mutableStateOf(false) }
+    var productToAddToBudget by remember { mutableStateOf<SupabaseProduct?>(null) }
+
+    val context = LocalContext.current
+
+    if (showAddToBudgetDialog && productToAddToBudget != null) {
+        AddToBudgetDialog(
+            product = productToAddToBudget!!,
+            supabaseService = supabaseService,
+            onDismiss = { showAddToBudgetDialog = false },
+            onSuccess = { budgetId ->
+                Toast.makeText(context, "Produto adicionado ao orçamento $budgetId com sucesso", Toast.LENGTH_LONG).show()
+                showAddToBudgetDialog = false
+            }
+        )
+    }
 
     if (showAdjustDialog && adjustmentProduct != null) {
         AlertDialog(
@@ -231,6 +252,10 @@ fun ProductsScreen(onProductClick: (Int) -> Unit) {
                                         adjustmentType = type
                                         adjustmentValue = "1"
                                         showAdjustDialog = true
+                                    },
+                                    onAddToBudget = {
+                                        productToAddToBudget = product
+                                        showAddToBudgetDialog = true
                                     }
                                 )
                             }
@@ -247,7 +272,8 @@ fun ProductsScreen(onProductClick: (Int) -> Unit) {
 fun ProductItem(
     product: SupabaseProduct,
     onClick: () -> Unit,
-    onAdjustStock: (String) -> Unit
+    onAdjustStock: (String) -> Unit,
+    onAddToBudget: () -> Unit
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
@@ -308,6 +334,14 @@ fun ProductItem(
             expanded = showMenu,
             onDismissRequest = { showMenu = false }
         ) {
+            DropdownMenuItem(
+                text = { Text("Adicionar ao orçamento ...") },
+                onClick = {
+                    showMenu = false
+                    onAddToBudget()
+                }
+            )
+
             val stockEnabled = product.generatesStock == true
             
             DropdownMenuItem(
@@ -336,4 +370,145 @@ fun ProductItem(
             )
         }
     }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun AddToBudgetDialog(
+    product: SupabaseProduct,
+    supabaseService: SupabaseService,
+    onDismiss: () -> Unit,
+    onSuccess: (Int) -> Unit
+) {
+    var isLoading by remember { mutableStateOf(true) }
+    var budgets by remember { mutableStateOf<List<com.r_erp.api.SupabaseElectibleBudget>>(emptyList()) }
+    var selectedBudget by remember { mutableStateOf<com.r_erp.api.SupabaseElectibleBudget?>(null) }
+    var quantity by remember { mutableStateOf("1.00") }
+    var searchText by remember { mutableStateOf("") }
+    var isExpanded by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isSaving by remember { mutableStateOf(false) }
+
+    val scope = rememberCoroutineScope()
+
+    LaunchedEffect(Unit) {
+        try {
+            budgets = supabaseService.getElectibleBudgets().sortedBy { it.clientName?.lowercase() }
+            isLoading = false
+        } catch (e: Exception) {
+            errorMessage = e.message ?: "Erro ao carregar orçamentos"
+            isLoading = false
+        }
+    }
+
+    val filteredBudgets = remember(budgets, searchText) {
+        budgets.filter { 
+            (it.clientName ?: "").contains(searchText, ignoreCase = true) || 
+            (it.id?.toString() ?: "").contains(searchText)
+        }
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Adicionar ao orçamento") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(text = "Produto: ${product.description}", style = MaterialTheme.typography.bodyLarge)
+                
+                if (isLoading) {
+                    CircularProgressIndicator(modifier = Modifier.align(Alignment.CenterHorizontally))
+                } else {
+                    ExposedDropdownMenuBox(
+                        expanded = isExpanded,
+                        onExpandedChange = { isExpanded = it }
+                    ) {
+                        OutlinedTextField(
+                            value = searchText,
+                            onValueChange = { 
+                                searchText = it
+                                isExpanded = true
+                                if (selectedBudget?.clientName != it) selectedBudget = null
+                            },
+                            label = { Text("Selecionar Orçamento") },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded) },
+                            modifier = Modifier.menuAnchor(ExposedDropdownMenuAnchorType.PrimaryEditable, true).fillMaxWidth(),
+                            colors = ExposedDropdownMenuDefaults.outlinedTextFieldColors()
+                        )
+                        
+                        ExposedDropdownMenu(
+                            expanded = isExpanded && filteredBudgets.isNotEmpty(),
+                            onDismissRequest = { isExpanded = false }
+                        ) {
+                            filteredBudgets.forEach { budget ->
+                                DropdownMenuItem(
+                                    text = { Text("#${budget.id} - ${budget.clientName}") },
+                                    onClick = {
+                                        selectedBudget = budget
+                                        searchText = budget.clientName ?: ""
+                                        isExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    OutlinedTextField(
+                        value = quantity,
+                        onValueChange = { quantity = it },
+                        label = { Text("Quantidade") },
+                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                        modifier = Modifier.fillMaxWidth()
+                    )
+
+                    if (errorMessage != null) {
+                        Text(text = errorMessage!!, color = MaterialTheme.colorScheme.error)
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val qty = quantity.toDoubleOrNull() ?: 0.0
+                    if (selectedBudget != null && qty > 0) {
+                        isSaving = true
+                        scope.launch {
+                            try {
+                                val request = com.r_erp.api.SupabaseBudgetItemRequest(
+                                    budgetId = selectedBudget!!.id,
+                                    productId = product.id,
+                                    serviceId = null,
+                                    quantity = qty,
+                                    price = product.price,
+                                    discount = 0.0
+                                )
+                                val response = supabaseService.createBudgetItem(request)
+                                if (response.isSuccessful) {
+                                    onSuccess(selectedBudget!!.id!!)
+                                } else {
+                                    errorMessage = "Erro: ${response.code()} ${response.message()}"
+                                }
+                            } catch (e: Exception) {
+                                errorMessage = e.message ?: "Erro ao salvar"
+                            } finally {
+                                isSaving = false
+                            }
+                        }
+                    }
+                },
+                enabled = selectedBudget != null && !isSaving && !isLoading
+            ) {
+                if (isSaving) {
+                    CircularProgressIndicator(modifier = Modifier.size(24.dp), color = MaterialTheme.colorScheme.onPrimary)
+                } else {
+                    Text("Adicionar")
+                }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss, enabled = !isSaving) {
+                Text("Cancelar")
+            }
+        }
+    )
 }
